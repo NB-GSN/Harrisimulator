@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HarriSimulator – Johnny-kompatibler Lernsimulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#eef1f5; --panel:#fff; --ink:#1b2330; --muted:#5f6b7c; --line:#d7dde6; --soft:#f6f8fb;
+  --ram:#2b6cd4; --ram-l:#e7effc; --alu:#cf6f1c; --alu-l:#fdf0e3; --cu:#178a5d; --cu-l:#e3f4ec;
+  --bus:#a3acba; --hot:#7c3aed; --hot-l:#efe7fe; --ok:#1a8a4a; --bad:#c62f3b; --warn:#a86400;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:12px; color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:var(--mono)}
+
+/* Header */
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1b2330;color:#fff;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#2b6cd4);display:grid;place-items:center;font-weight:800;font-family:var(--mono);font-size:15px}
+.brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+.brand small{display:block;font-size:11px;color:#aab4c3;font-weight:400}
+.seg{display:inline-flex;background:#2c3646;border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:#c9d1dd;padding:6px 12px;border-radius:8px;font-weight:600;font-size:13px}
+.seg button.on{background:#fff;color:#1b2330}
+.custom-badge{font-size:11px;background:#7c3aed;color:#fff;border-radius:999px;padding:2px 8px;display:none}
+.custom-badge.show{display:inline-block}
+.hbtn{border:1px solid #3a4558;background:#262f3e;color:#fff;border-radius:9px;padding:7px 12px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.hbtn:hover{background:#334055}
+.hbtn.tour{background:#7c3aed;border-color:#7c3aed}
+.hbtn.tour:hover{background:#6d28d9}
+
+/* Layout */
+main{display:grid;gap:12px;padding:12px;grid-template-columns:305px minmax(0,1fr) 330px;grid-template-areas:"mem cpu info";height:calc(100vh - 58px);min-height:640px}
+.panel{background:var(--panel);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,30,50,.06),0 0 0 1px var(--line);display:flex;flex-direction:column;min-height:0}
+#memPanel{grid-area:mem}#cpuPanel{grid-area:cpu}#infoPanel{grid-area:info;overflow:auto}
+@media (max-width:1280px){
+  main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"cpu cpu" "mem info";height:auto}
+  #memPanel{height:620px}#infoPanel{max-height:620px}
+}
+@media (max-width:820px){
+  main{grid-template-columns:1fr;grid-template-areas:"cpu" "mem" "info"}
+}
+.ptitle{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+@media (max-width:820px){#cpuHint{display:none}}
+.ptitle h2{font-size:14px;margin:0;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%}
+
+/* Tabs + RAM */
+.tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:8px 12px;border-bottom:3px solid transparent;font-weight:600;color:var(--muted)}
+.tabs button.on{color:var(--ram);border-color:var(--ram)}
+.tabpane{display:none;flex:1;min-height:0;flex-direction:column}
+.tabpane.on{display:flex}
+.editor{padding:10px 12px;border-bottom:1px solid var(--line);background:var(--ram-l)}
+.editor .row{display:flex;gap:6px;align-items:center}
+.editor label{font-size:12px;color:var(--muted);font-weight:600}
+.editor .cellno{font-family:var(--mono);font-weight:700;color:var(--ram);font-size:15px;min-width:34px}
+.editor select,.editor input{border:1px solid #b9c7de;border-radius:8px;padding:6px 8px;background:#fff;min-width:0}
+.editor select{flex:1.2}.editor input{flex:1;font-family:var(--mono)}
+.editor .hintline{font-size:11.5px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;gap:8px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--ram);border-color:var(--ram);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:5px 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ramwrap{flex:1;overflow:auto;min-height:0}
+table.ram{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+table.ram th{position:sticky;top:0;background:#fff;font-family:var(--sans);font-size:11.5px;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);z-index:1}
+table.ram td{padding:4px 8px;border-bottom:1px solid #eef1f5;white-space:nowrap}
+table.ram tr{cursor:pointer}
+table.ram tr:hover td{background:#f5f8fe}
+table.ram td.pcm{width:18px;color:var(--cu);font-weight:800;padding-right:0}
+table.ram td.adr{color:var(--muted);width:44px}
+table.ram td.val{width:74px}
+table.ram td.mn{font-family:var(--sans);font-weight:600}
+table.ram td.mn .num{font-family:var(--mono);color:var(--alu);font-weight:600}
+table.ram td.mn .cmd{color:var(--ram)}
+table.ram td.mn .op{font-family:var(--mono)}
+table.ram tr.zero td.val{color:#b6bdc8}
+table.ram tr.pc td{background:var(--cu-l)}
+table.ram tr.ab td.val{box-shadow:inset 0 0 0 2px var(--hot);border-radius:4px}
+table.ram tr.sel td{background:#d9e6fb!important}
+table.ram tr.flash td{animation:flash 1s}
+@keyframes flash{0%{background:#ffe9a8}100%{background:transparent}}
+.ramfoot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.ramfoot label{font-size:12px;color:var(--muted);display:flex;gap:4px;align-items:center;margin-right:auto}
+
+/* Programmtext */
+.textpane{padding:10px;gap:8px}
+#progText{flex:1;white-space:pre;overflow:auto;min-height:220px;width:100%;resize:none;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--mono);font-size:13.5px;line-height:1.55;background:#fbfcfe;tab-size:4}
+.errlist{margin:0;padding:0;list-style:none;font-size:12.5px}
+.errlist li{background:#fdecee;color:var(--bad);border-radius:8px;padding:6px 9px;margin-bottom:4px}
+.okline{background:#e6f5ec;color:var(--ok);border-radius:8px;padding:6px 9px;font-size:12.5px}
+details.syntax{font-size:12.5px;background:var(--soft);border-radius:10px;padding:6px 10px}
+details.syntax summary{cursor:pointer;font-weight:600;color:var(--muted)}
+details.syntax code{font-family:var(--mono);background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px}
+details.syntax pre{font-family:var(--mono);background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0;font-size:12px}
+
+/* CPU */
+#cpuPanel{min-width:0}
+.svgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:6px 8px}
+#cpu{width:100%;height:100%;max-height:100%}
+@media (max-width:1280px){.svgwrap{height:auto}#cpu{height:auto}}
+.unit{stroke-width:1.5}
+.unit.ram{fill:var(--ram-l);stroke:#bcd0f1}
+.unit.alu{fill:var(--alu-l);stroke:#f1cfa9}
+.unit.cu{fill:var(--cu-l);stroke:#b2dfc9}
+.utitle{font-weight:800;font-size:13px}
+.utitle.ram{fill:var(--ram)}.utitle.alu{fill:var(--alu)}.utitle.cu{fill:var(--cu)}
+.lbl{font-size:10px;fill:var(--muted);font-weight:600}
+.lbl2{font-size:12px;fill:var(--muted);font-weight:700}
+.reg{fill:#fff;stroke:#c3cad5;stroke-width:1.3}
+.regval{font-family:var(--mono);font-weight:700;fill:var(--ink)}
+.bus{fill:none;stroke:var(--bus);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.wire{fill:none;stroke:var(--bus);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.bus.hot,.wire.hot{stroke:var(--hot);stroke-dasharray:10 7;animation:flow .5s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-17}}
+.reg.hot,.hotbox{stroke:var(--hot)!important;stroke-width:3!important}
+.ramrow rect{fill:#fff;stroke:#d3dff3}
+.ramrow.cur rect{stroke:var(--hot);stroke-width:2.2}
+.ramrow.cur.hot rect{fill:var(--hot-l)}
+.ramrow text{font-family:var(--mono);font-size:12px}
+.ramrow .a{fill:var(--muted)}
+.ramrow.cur .a{fill:var(--hot);font-weight:700}
+.ramrow.pcrow .a{fill:var(--cu);font-weight:700}
+.op rect{fill:#fff;stroke:#b8c0cc;stroke-width:1.3}
+.op text{font-family:var(--mono);font-size:11px;fill:#3b4656;font-weight:600;pointer-events:none}
+.op{cursor:help}
+.op:hover rect{stroke:var(--hot)}
+.op.hot rect{fill:var(--hot);stroke:var(--hot)}
+.op.hot text{fill:#fff}
+.op.next rect{stroke:var(--hot);stroke-width:2;stroke-dasharray:3 2}
+body.manual .op{cursor:pointer}
+body.manual .op rect{fill:#fff8e1;stroke:#e0a800;stroke-width:1.6}
+body.manual .op:hover rect{fill:#ffe082}
+body.manual .op.mcop{opacity:.35;pointer-events:none}
+body.manual .op.hot rect{fill:var(--hot);stroke:var(--hot)}
+.editable{cursor:default}
+body.manual .editable{cursor:pointer}
+body.manual .editable rect{stroke:#e0a800;stroke-width:2;stroke-dasharray:4 3}
+.lamp{fill:#e3e7ee;stroke:#b5bdca;stroke-width:1.5}
+.lamp.on{fill:#ffcf33;stroke:#c99700;filter:drop-shadow(0 0 5px #ffcf33)}
+.changed{animation:pulse .9s}
+@keyframes pulse{0%{fill:var(--hot)}100%{}}
+.mcinfo{fill:#fff;stroke:#b2dfc9}
+
+/* Controls */
+.controls{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cbtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 14px;font-weight:700;display:inline-flex;align-items:center;gap:7px;font-size:14px}
+.cbtn:hover{background:var(--soft)}
+.cbtn:disabled{opacity:.4;cursor:not-allowed}
+.cbtn.go{background:var(--cu);border-color:var(--cu);color:#fff}
+.cbtn.go.pause{background:#c27c00;border-color:#c27c00}
+.cbtn.step{border-color:#c9b6f7;color:#5b21b6}
+.cbtn kbd{font-family:var(--mono);font-size:10.5px;background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);font-weight:500}
+.speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.speed input{width:110px;accent-color:var(--cu)}
+.switch{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-left:auto;cursor:pointer;user-select:none;border:1px dashed #e0a800;border-radius:10px;padding:6px 10px;background:#fffbea}
+.switch input{display:none}
+.switch .tr{width:36px;height:20px;border-radius:999px;background:#c7ced8;position:relative;transition:.2s}
+.switch .tr::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.2s}
+.switch input:checked+.tr{background:#e0a800}
+.switch input:checked+.tr::after{left:18px}
+.statusbar{padding:0 12px 10px;font-size:12.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.statusbar b{color:var(--ink);font-family:var(--mono)}
+
+/* Info */
+.card{margin:10px 12px 0;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.card:last-child{margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.phases{display:flex;gap:6px;margin-bottom:8px}
+.ph{flex:1;text-align:center;border-radius:8px;padding:5px;font-weight:700;font-size:12.5px;background:var(--soft);color:#9aa3b0;border:1px solid var(--line)}
+.ph.on{background:var(--hot);color:#fff;border-color:var(--hot)}
+.ph.done{background:var(--hot-l);color:var(--hot);border-color:#d8c7fb}
+.curinstr{font-size:13px;color:var(--muted)}
+.curinstr b{font-family:var(--mono);font-size:19px;color:var(--ink);display:block;margin:2px 0}
+.curtxt{margin:4px 0 0;font-size:14px}
+.phase.halt{border-color:#f0b9be;background:#fff6f7}
+.phase.manual{border-color:#efd27a;background:#fffbea}
+.mgroup{font-size:11.5px;font-weight:700;color:var(--muted);margin:8px 0 4px;display:flex;justify-content:space-between}
+.mgroup:first-child{margin-top:0}
+ol.micro{list-style:none;margin:0;padding:0}
+ol.micro li{display:flex;gap:8px;align-items:flex-start;padding:4px 6px;border-radius:8px;font-size:12.5px;color:var(--muted)}
+ol.micro li .lab{font-family:var(--mono);font-weight:700;font-size:12px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap;color:#3b4656}
+ol.micro li.done{color:#9aa3b0}
+ol.micro li.done .lab{opacity:.6}
+ol.micro li.done::before{content:"✓";color:var(--ok);font-weight:800;width:12px}
+ol.micro li.next{background:var(--hot-l);color:var(--ink)}
+ol.micro li.next::before{content:"▶";color:var(--hot);width:12px;font-size:11px;margin-top:2px}
+ol.micro li.todo::before{content:"";width:12px}
+ol.micro li.next .lab{background:var(--hot);color:#fff;border-color:var(--hot)}
+.placeholder{font-size:12.5px;color:#9aa3b0;font-style:italic;padding:4px 6px}
+.nowop{font-family:var(--mono);font-weight:800;color:var(--hot);font-size:15px}
+#nowTxt{margin:4px 0 0}
+ol.log{margin:6px 0 0;padding-left:0;list-style:none;font-size:12px;font-family:var(--mono);max-height:220px;overflow:auto}
+ol.log li{padding:2px 0;border-bottom:1px dashed #eef1f5;color:var(--muted)}
+ol.log li b{color:var(--ink)}
+details.card summary{cursor:pointer;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+.recipe{font-size:13px;margin:6px 0 0;padding-left:18px}
+.recipe li{margin-bottom:3px}
+.recipe code{font-family:var(--mono);background:#fff3c4;border-radius:4px;padding:0 4px;font-size:12px}
+
+/* Modals */
+.modal-bg{position:fixed;inset:0;background:rgba(15,22,35,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:760px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal.wide{max-width:980px}
+.modal.narrow{max-width:460px}
+.mhead{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.mhead h2{margin:0;font-size:17px;margin-right:auto}
+.mbody{padding:14px 18px;overflow:auto}
+.mfoot{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.xbtn{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);padding:2px 6px}
+.list{display:grid;gap:8px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:center}
+.item:hover{border-color:#b9c7de;background:#fafcff}
+.item .t{font-weight:700}
+.item .d{font-size:12.5px;color:var(--muted)}
+.item .grow{flex:1}
+.tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.tag.bonsai{background:#f0fae4;color:#4d7c0f;border-color:#cfe8b0}
+.task{border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+.task>summary{list-style:none;cursor:pointer;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.task>summary::-webkit-details-marker{display:none}
+.task[open]>summary{border-bottom:1px solid var(--line)}
+.task .tb{padding:10px 12px;font-size:13.5px}
+.task .num{width:26px;height:26px;border-radius:50%;background:var(--ram-l);color:var(--ram);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.task .num.ok{background:#e6f5ec;color:var(--ok)}
+.res{margin-top:8px;font-size:12.5px}
+.res table{border-collapse:collapse;margin-top:6px}
+.res td,.res th{padding:3px 8px;border:1px solid var(--line);font-family:var(--mono)}
+.res th{font-family:var(--sans);font-size:11.5px;color:var(--muted);background:var(--soft)}
+.pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}
+pre.sol{font-family:var(--mono);background:var(--soft);border-radius:8px;padding:8px;font-size:12.5px}
+.mcgrid{display:grid;grid-template-columns:220px 1fr;gap:14px}
+@media (max-width:700px){.mcgrid{grid-template-columns:1fr}}
+.oplist{border:1px solid var(--line);border-radius:10px;max-height:430px;overflow:auto}
+.oplist button{display:flex;width:100%;border:0;border-bottom:1px solid #eef1f5;background:#fff;padding:7px 10px;gap:8px;text-align:left;font-size:13px}
+.oplist button .n{font-family:var(--mono);color:var(--muted)}
+.oplist button.free{color:#a0a8b4;font-style:italic}
+.oplist button.on{background:var(--hot-l);font-weight:700}
+.stepsed .srow{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.stepsed .srow .n{font-family:var(--mono);font-size:12px;color:var(--muted);width:30px}
+.stepsed select{flex:1;border:1px solid var(--line);border-radius:8px;padding:5px 7px;font-family:var(--mono);font-size:13px}
+.ibtn{border:1px solid var(--line);background:#fff;border-radius:7px;width:28px;height:28px;display:grid;place-items:center;font-size:13px}
+.ibtn:hover{background:var(--soft)}
+.warnbox{background:#fff6e0;border:1px solid #f1d58f;color:#7a5200;border-radius:8px;padding:7px 10px;font-size:12.5px;margin-top:8px}
+.infobox{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;font-weight:700;color:var(--muted)}
+.field input[type=text]{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:var(--mono)}
+textarea.export{width:100%;height:180px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* Value popover */
+#valPop{position:fixed;z-index:90;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:10px;display:none;gap:6px;align-items:center;border:2px solid #e0a800}
+#valPop.on{display:flex}
+#valPop input{width:90px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:15px}
+#valPop span{font-size:12px;font-weight:700;color:var(--muted)}
+
+/* Toast */
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);background:#1b2330;color:#fff;padding:10px 16px;border-radius:12px;font-weight:600;opacity:0;transition:.25s;z-index:95;max-width:min(560px,90vw);box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.bad{background:var(--bad)}#toast.ok{background:var(--ok)}
+
+/* Tour */
+#tourSpot{position:fixed;z-index:70;border-radius:12px;box-shadow:0 0 0 9999px rgba(15,22,35,.55);pointer-events:none;transition:all .25s;outline:3px solid #a78bfa;display:none}
+#tourSpot.center{box-shadow:0 0 0 9999px rgba(15,22,35,.55);outline:none;width:0!important;height:0!important}
+#tourCard{position:fixed;z-index:75;width:360px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.3);padding:14px 16px;display:none;border-top:5px solid var(--hot)}
+#tourCard .tc-top{display:flex;align-items:center;font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+#tourCard .tc-top span{margin-right:auto}
+#tourCard h3{margin:6px 0 6px;font-size:16px}
+#tourCard .tc-body{font-size:13.5px}
+#tourCard .tc-body p{margin:0 0 6px}
+#tourCard .tc-body code,#tourCard .tc-body .k{font-family:var(--mono);background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;font-size:12.5px}
+#tourCard .task-line{background:#fff3c4;border-radius:8px;padding:7px 9px;font-weight:600;margin-top:6px;font-size:13px}
+#tourCard .task-line.done{background:#e6f5ec;color:var(--ok)}
+#tourCard .tc-foot{display:flex;gap:6px;margin-top:10px;align-items:center}
+#tourCard .tc-foot .sp{margin-right:auto;font-size:12px;color:var(--muted)}
+.progress{height:4px;background:var(--soft);border-radius:4px;margin-top:6px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--hot)}
+.tourlist .item{cursor:pointer}
+.tourlist .k{width:34px;height:34px;border-radius:10px;background:var(--hot-l);color:var(--hot);display:grid;place-items:center;font-weight:800;flex:none}
+.welcome{text-align:center;padding:10px 6px}
+.welcome .big{font-size:40px}
+.welcome p{color:var(--muted)}
+footer{font-size:11.5px;color:var(--muted);text-align:center;padding:0 12px 12px}
+footer a{color:var(--muted)}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">H</div>
+    <div><h1>HarriSimulator</h1><small>Lernsimulator · kompatibel zu Johnny</small></div>
+  </div>
+  <div class="seg" id="modeSeg" title="Befehlssatz wählen">
+    <button data-mode="standard" class="on">Standard</button>
+    <button data-mode="bonsai">Bonsai</button>
+  </div>
+  <span class="custom-badge" id="customBadge">eigener Befehlssatz</span>
+  <button class="hbtn" id="btnExamples">📂 Beispiele</button>
+  <button class="hbtn" id="btnTasks">✅ Aufgaben</button>
+  <button class="hbtn" id="btnCode">🧩 Befehlssatz</button>
+  <button class="hbtn" id="btnFile">💾 Speichern/Laden</button>
+  <button class="hbtn tour" id="btnTour">🎓 Tour</button>
+</header>
+
+<main>
+  <!-- Speicher -->
+  <section class="panel" id="memPanel">
+    <div class="ptitle"><span class="dot" style="background:var(--ram)"></span><h2>Arbeitsspeicher (RAM)</h2></div>
+    <div class="tabs">
+      <button class="on" data-tab="tabRam" id="tabBtnRam">Speicherzellen</button>
+      <button data-tab="tabText" id="tabBtnText">Programmtext</button>
+    </div>
+    <div class="tabpane on" id="tabRam">
+      <div class="editor" id="cellEditor">
+        <div class="row">
+          <span class="cellno" id="edAdr">000</span>
+          <select id="edCmd" aria-label="Befehl"></select>
+          <input id="edArg" inputmode="numeric" autocomplete="off" aria-label="Adresse oder Zahl">
+          <button class="btn primary small" id="edOk" title="Eintragen (Enter)">✓</button>
+        </div>
+        <div class="hintline"><span id="edHint">Befehl wählen, Adresse eingeben, <b>Enter</b> → nächste Zelle</span><span id="edRaw" class="mono"></span></div>
+      </div>
+      <div class="ramwrap" id="ramWrap">
+        <table class="ram"><thead><tr><th></th><th>Adr.</th><th>Inhalt</th><th>Bedeutung</th></tr></thead><tbody id="ramBody"></tbody></table>
+      </div>
+      <div class="ramfoot">
+        <label><input type="checkbox" id="follow" checked> Programmzähler folgen</label>
+        <button class="btn small" id="btnClearRam">Speicher leeren</button>
+      </div>
+    </div>
+    <div class="tabpane textpane" id="tabText">
+      <textarea id="progText" wrap="off" spellcheck="false" aria-label="Programmtext"></textarea>
+      <div id="asmMsg"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn primary" id="btnAssemble">⬇ In den Speicher schreiben</button>
+        <button class="btn" id="btnDisasm" title="Aktuellen Speicherinhalt als Text anzeigen">⟲ Aus dem Speicher holen</button>
+      </div>
+      <details class="syntax">
+        <summary>So schreibt man Programme</summary>
+        <p>Jede Zeile ist eine Speicherzelle – ab Zelle 000 aufwärts.</p>
+        <pre>TAKE 10      ; Befehl + Adresse
+ADD 11
+SAVE 12
+HLT
+10: 5        ; "10:" = ab Zelle 010 weiter
+7            ; reine Zahl = Daten</pre>
+        <p>Kommentare beginnen mit <code>;</code>. Für Sprünge kann man <b>Marken</b> setzen: <code>schleife: TST 20</code> … <code>JMP schleife</code>. Auch das Johnny-Format <code>01.010</code> wird verstanden.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Rechner -->
+  <section class="panel" id="cpuPanel">
+    <div class="ptitle"><span class="dot" style="background:var(--hot)"></span><h2>Der Rechner</h2>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted)" id="cpuHint">Tipp: Klick auf einen runden Knopf erklärt den Mikroschritt.</span></div>
+    <div class="svgwrap">
+<svg id="cpu" viewBox="0 0 800 470" role="img" aria-label="Schaubild: Speicher, Busse, Rechenwerk und Steuerwerk">
+  <!-- Einheiten -->
+  <g id="g-ram">
+    <rect class="unit ram" x="15" y="55" width="165" height="340" rx="12"/>
+    <text class="utitle ram" x="27" y="77">Arbeitsspeicher</text>
+    <g id="ramRows"></g>
+    <text class="lbl" x="97" y="388" text-anchor="middle">lila: Zelle am Adressbus</text>
+  </g>
+  <g id="g-alu">
+    <rect class="unit alu" x="205" y="296" width="295" height="162" rx="12"/>
+    <text class="utitle alu" x="217" y="447">Rechenwerk</text>
+    <text class="lbl" x="488" y="447" text-anchor="end">Zahlen von 0 bis 19999</text>
+    <g id="acc-box"><rect class="reg" id="acc-rect" x="250" y="322" width="180" height="44" rx="8"/>
+      <text class="lbl" x="260" y="337">Akkumulator</text>
+      <text class="regval" id="v-acc" x="420" y="357" text-anchor="end" font-size="22">00000</text></g>
+    <g id="zero-lamp"><circle class="lamp" id="lamp" cx="465" cy="344" r="11"/><text class="lbl" x="465" y="371" text-anchor="middle">= 0 ?</text></g>
+  </g>
+  <g id="g-cu">
+    <rect class="unit cu" x="530" y="76" width="260" height="382" rx="12"/>
+    <text class="utitle cu" x="682" y="96" text-anchor="middle">Steuerwerk</text>
+    <g id="pc-box"><rect class="reg" id="pc-rect" x="548" y="108" width="112" height="40" rx="8"/>
+      <text class="lbl" x="556" y="121">Programmzähler</text>
+      <text class="regval" id="v-pc" x="652" y="143" text-anchor="end" font-size="20">000</text></g>
+    <text class="lbl2" x="548" y="206">Befehlsregister</text>
+    <g id="ir-box">
+      <g id="ir-op"><rect class="reg" id="irop-rect" x="548" y="212" width="80" height="50" rx="8"/>
+        <text class="lbl" x="588" y="225" text-anchor="middle">Befehl</text>
+        <text class="regval" id="v-irop" x="588" y="253" text-anchor="middle" font-size="20">00</text></g>
+      <g id="ir-adr"><rect class="reg" id="iradr-rect" x="634" y="212" width="146" height="50" rx="8"/>
+        <text class="lbl" x="707" y="225" text-anchor="middle">Adresse</text>
+        <text class="regval" id="v-iradr" x="707" y="253" text-anchor="middle" font-size="20">000</text></g>
+    </g>
+    <text id="v-mnem" x="707" y="281" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b21b6"></text>
+    <g id="mc-box"><rect class="reg" id="mc-rect" x="548" y="318" width="100" height="40" rx="8"/>
+      <text class="lbl" x="554" y="331">Mikrocode-Zähler</text>
+      <text class="regval" id="v-mc" x="640" y="352" text-anchor="end" font-size="18">000</text></g>
+    <rect class="mcinfo" x="548" y="372" width="232" height="72" rx="8"/>
+    <text class="lbl" x="558" y="391">Nächster Mikroschritt</text>
+    <text class="lbl" id="v-mcaddr" x="770" y="391" text-anchor="end"></text>
+    <text id="v-nextop" x="558" y="418" style="font-family:var(--mono)" font-size="16" font-weight="800" fill="#5b21b6">pc → ab</text>
+    <text id="v-phase" x="558" y="436" font-size="11" fill="#5f6b7c"></text>
+  </g>
+  <!-- Busse und Leitungen -->
+  <g id="g-buses">
+    <path id="bus-ab" class="bus" d="M97 55 V28 H760"/>
+    <path id="w-pc-ab" class="wire" d="M604 28 V108"/>
+    <path id="w-ins-ab" class="wire" d="M760 28 V212"/>
+    <path id="bus-db" class="bus" d="M180 236 H548"/>
+    <path id="w-db-acc" class="wire" d="M290 236 V322"/>
+    <path id="w-acc-db" class="wire" d="M390 322 V236"/>
+    <path id="w-ins-pc" class="wire" d="M700 212 V128 H660"/>
+    <path id="w-ins-mc" class="wire" d="M588 262 V318"/>
+  </g>
+  <text class="lbl2" x="380" y="12" text-anchor="middle">Adressbus</text>
+  <g id="ab-box" class="editable"><rect class="reg" id="ab-rect" x="335" y="16" width="90" height="25" rx="7"/>
+    <text class="regval" id="v-ab" x="380" y="34" text-anchor="middle" font-size="15">000</text></g>
+  <text class="lbl2" x="438" y="218" text-anchor="middle">Datenbus</text>
+  <g id="db-box" class="editable"><rect class="reg" id="db-rect" x="400" y="224" width="76" height="25" rx="7"/>
+    <text class="regval" id="v-db" x="438" y="242" text-anchor="middle" font-size="15">00000</text></g>
+  <g id="opButtons"></g>
+</svg>
+    </div>
+    <div class="controls" id="controls">
+      <button class="cbtn" id="btnReset" title="Register zurücksetzen (Speicher bleibt)">⟲ Zurücksetzen</button>
+      <button class="cbtn" id="btnUndo" title="Letzten Schritt rückgängig (Strg+Z)">↶ Zurück</button>
+      <button class="cbtn step" id="btnMicro" title="Einen Mikroschritt ausführen (Pfeil rechts)">▸ Mikroschritt <kbd>→</kbd></button>
+      <button class="cbtn step" id="btnMacro" title="Einen ganzen Befehl ausführen (Umschalt + Pfeil rechts)">▸▸ Befehl <kbd>⇧→</kbd></button>
+      <button class="cbtn go" id="btnRun" title="Programm laufen lassen (Leertaste)">▶ Start</button>
+      <div class="speed"><span>Tempo</span><input type="range" id="speed" min="0" max="5" value="2" aria-label="Tempo"><span id="speedLbl">mittel</span></div>
+      <label class="switch" id="manualToggle" title="Steuerwerk ausschalten: Du klickst die Mikroschritte selbst"><input type="checkbox" id="manual"><span class="tr"></span>Handbetrieb</label>
+    </div>
+    <div class="statusbar" id="statusbar"></div>
+  </section>
+
+  <!-- Erklärungen -->
+  <section class="panel" id="infoPanel">
+    <div class="ptitle"><span class="dot" style="background:var(--cu)"></span><h2>Was passiert gerade?</h2></div>
+    <div class="card phase" id="phaseCard"></div>
+    <div class="card" id="microCard"><h3>Mikroschritte</h3><div id="microList"></div></div>
+    <div class="card" id="nowCard"><h3>Gerade passiert</h3><div class="nowop" id="nowOp">–</div><p id="nowTxt">Klicke auf <b>Mikroschritt</b> oder <b>Befehl</b> – hier steht dann, was im Rechner passiert ist.</p></div>
+    <details class="card" id="logCard"><summary>Protokoll der letzten Schritte</summary><ol class="log" id="log"></ol></details>
+  </section>
+</main>
+<footer>Befehlssatz, Mikrocode und Dateiformate (.ram, .mc) entsprechen dem Simulator <a href="https://www.inf-schule.de/rechner/johnny" target="_blank" rel="noopener">Johnny</a> von Peter Dauscher (Web-Version: David Laubersheimer).</footer>
+
+<!-- Modale Fenster -->
+<div class="modal-bg" id="mExamples"><div class="modal">
+  <div class="mhead"><h2>Beispielprogramme</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody"><div class="list" id="exList"></div></div>
+</div></div>
+
+<div class="modal-bg" id="mTasks"><div class="modal">
+  <div class="mhead"><h2>Aufgaben mit automatischer Prüfung</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody">
+    <p class="infobox" style="margin-top:0">Schreibe dein Programm in den Speicher (oder als Programmtext). „Prüfen“ testet es mit verschiedenen Zahlen in den Eingabezellen – dein Speicher bleibt dabei unverändert.</p>
+    <div id="taskList"></div>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="mCode"><div class="modal wide">
+  <div class="mhead"><h2>Befehlssatz &amp; Mikrocode</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody">
+    <p class="infobox" style="margin-top:0">Jeder Befehl ist ein kleines <b>Mikroprogramm</b>: eine Folge von Mikroschritten, die das Steuerwerk nacheinander auslöst. Befehl Nr. <i>n</i> steht im Mikrocode ab Adresse <i>n</i>·10. Hier kannst du Befehle ansehen, ändern oder neue erfinden (freie Nummern).</p>
+    <div class="mcgrid">
+      <div class="oplist" id="mcOpList"></div>
+      <div id="mcEditor"></div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" id="mcStd">Standard-Befehlssatz laden</button>
+    <button class="btn" id="mcBonsai">Bonsai-Befehlssatz laden</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="mcExport">Mikrocode exportieren (.mc)</button>
+    <span class="btn filebtn">Mikrocode importieren<input type="file" id="mcImport" accept=".mc,.txt"></span>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="mFile"><div class="modal narrow">
+  <div class="mhead"><h2>Speichern &amp; Laden</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody">
+    <div class="field"><label>Programm laden</label>
+      <span class="btn filebtn">📂 .ram-Datei öffnen (auch aus Johnny)<input type="file" id="ramImport" accept=".ram,.txt"></span></div>
+    <div class="field"><label>Programm speichern</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="ramExport">💾 Als .ram-Datei (für Johnny)</button><button class="btn" id="txtExport">📝 Als Programmtext</button></div></div>
+    <p class="infobox">Der Browser merkt sich deinen Speicher automatisch. Für die Weitergabe an Kolleg:innen oder Lernende: als Datei speichern.</p>
+  </div>
+</div></div>
+
+<div class="modal-bg" id="mExport"><div class="modal narrow">
+  <div class="mhead"><h2 id="exTitle">Exportieren</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody">
+    <textarea class="export" id="exText" readonly></textarea>
+    <p class="infobox" style="margin-bottom:0">Falls der Download nicht startet (z. B. in einer Vorschau): <b>Kopieren</b> und in einer Textdatei mit passender Endung speichern.</p>
+  </div>
+  <div class="mfoot"><button class="btn" id="exCopy">📋 Kopieren</button><button class="btn primary" id="exDownload">⬇ Herunterladen</button></div>
+</div></div>
+
+<div class="modal-bg" id="mTour"><div class="modal">
+  <div class="mhead"><h2>Geführte Tour</h2><button class="xbtn" data-close>×</button></div>
+  <div class="mbody"><div class="list tourlist" id="tourList"></div></div>
+</div></div>
+
+<div class="modal-bg" id="mConfirm"><div class="modal narrow">
+  <div class="mhead"><h2 id="cfTitle">Bist du sicher?</h2></div>
+  <div class="mbody" id="cfText"></div>
+  <div class="mfoot"><button class="btn" id="cfNo">Abbrechen</button><button class="btn primary" id="cfYes">OK</button></div>
+</div></div>
+
+<div class="modal-bg" id="mWelcome"><div class="modal narrow">
+  <div class="mbody welcome">
+    <div class="big">🖥️</div>
+    <h2>Willkommen im HarriSimulator</h2>
+    <p>Ein Modellrechner zum Zuschauen, Mitmachen und Programmieren – mit Erklärungen zu jedem einzelnen Schritt.</p><p style="font-size:13px">Zum ersten Mal hier? Die Tour beginnt mit der Frage, was ein Simulator ist und wie ein Computer grundsätzlich aufgebaut ist.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+      <button class="btn primary" id="wcTour">🎓 Tour starten</button>
+      <button class="btn" id="wcGo">Direkt loslegen</button>
+    </div>
+  </div>
+</div></div>
+
+<div id="valPop"><span id="vpLbl">Adressbus</span><input id="vpIn" inputmode="numeric"><button class="btn primary small" id="vpOk">OK</button></div>
+<div id="toast"></div>
+<div id="tourSpot"></div>
+<div id="tourCard"></div>
+
+<script>
+/* ===== ENGINE (kompatibel zu Johnny: Mikrocode-Nummern, .ram/.mc-Dateiformat) ===== */
+const RAM_SIZE = 1000, MAX_VAL = 19999, MAX_PC = 999;
+
+const OPS = {
+  8:  {label:'pc → ab',   short:'Programmzähler auf den Adressbus'},
+  2:  {label:'ram → db',  short:'Speicherzelle auf den Datenbus'},
+  1:  {label:'db → ram',  short:'Datenbus in die Speicherzelle'},
+  3:  {label:'db → ins',  short:'Datenbus ins Befehlsregister'},
+  4:  {label:'ins → ab',  short:'Adressteil des Befehls auf den Adressbus'},
+  5:  {label:'ins → mc',  short:'Befehlsnummer an den Mikrocode-Zähler'},
+  11: {label:'ins → pc',  short:'Adressteil in den Programmzähler (Sprung)'},
+  18: {label:'db → acc',  short:'Datenbus in den Akku'},
+  15: {label:'acc → db',  short:'Akku auf den Datenbus'},
+  13: {label:'plus',      short:'Akku + Datenbus'},
+  14: {label:'minus',     short:'Akku − Datenbus'},
+  16: {label:'acc++',     short:'Akku um 1 erhöhen'},
+  17: {label:'acc--',     short:'Akku um 1 verringern'},
+  12: {label:'acc := 0',  short:'Akku auf 0 setzen'},
+  9:  {label:'pc++',      short:'Programmzähler um 1 erhöhen'},
+  10: {label:'=0? pc++',  short:'Wenn Akku = 0: Programmzähler + 1'},
+  7:  {label:'mc := 0',   short:'Mikrocode-Zähler auf 0 (nächster Befehl holen)'},
+  19: {label:'stopp',     short:'Programm anhalten'}
+};
+const OP_ORDER = [8,2,1,3,4,5,11,18,15,13,14,16,17,12,9,10,7,19];
+
+function mcFromString(s){
+  const p = s.split(';'); const mc = []; const names = [];
+  for(let i=0;i<200;i++) mc[i] = parseInt(p[i])||0;
+  for(let i=200;i<p.length;i++) names.push(p[i]);
+  return {mc, names};
+}
+const PRESETS = {
+  standard: mcFromString("8;2;3;5;0;0;0;0;0;0;4;2;18;9;7;0;0;0;0;0;4;2;13;9;7;0;0;0;0;0;4;2;14;9;7;0;0;0;0;0;4;15;1;9;7;0;0;0;0;0;11;7;0;0;0;0;0;0;0;0;4;2;18;10;9;7;0;0;0;0;4;2;18;16;15;1;9;7;0;0;4;2;18;17;15;1;9;7;0;0;4;12;15;1;9;7;0;0;0;0;19;7;0;0;0;0;0;0;0;0" + ";0".repeat(90) + ";FETCH;TAKE;ADD;SUB;SAVE;JMP;TST;INC;DEC;NULL;HLT"),
+  bonsai:   mcFromString("8;2;3;5;0;0;0;0;0;0;4;2;18;16;15;1;9;7;0;0;4;2;18;17;15;1;9;7;0;0;11;7;0;0;0;0;0;0;0;0;4;2;18;10;9;7;0;0;0;0;19;7;0;0;0;0;0;0;0;0" + ";0".repeat(140) + ";FETCH;INC;DEC;JMP;TST;HLT")
+};
+
+const MACRO_TEXT = {
+  TAKE:'Lade den Wert aus Zelle {a} in den Akku.',
+  ADD: 'Addiere den Wert aus Zelle {a} zum Akku.',
+  SUB: 'Ziehe den Wert aus Zelle {a} vom Akku ab (Ergebnis nie unter 0).',
+  SAVE:'Speichere den Akku in Zelle {a}.',
+  JMP: 'Springe zu Adresse {a}: der nächste Befehl kommt aus Zelle {a}.',
+  TST: 'Teste Zelle {a}: Ist sie 0, wird der nächste Befehl übersprungen.',
+  INC: 'Erhöhe den Wert in Zelle {a} um 1.',
+  DEC: 'Verringere den Wert in Zelle {a} um 1.',
+  NULL:'Setze Zelle {a} auf 0.',
+  HLT: 'Halte das Programm an.'
+};
+const MACRO_HAS_ADDR = {HLT:false};
+
+const pad = (n,l)=>String(Math.max(0,Math.floor(n))).padStart(l,'0');
+const fmtVal = v => { const s = pad(v,5); return s.slice(0,2)+'.'+s.slice(2); };
+const fmtAdr = a => pad(a,3);
+
+class Machine {
+  constructor(){
+    this.ram = new Array(RAM_SIZE).fill(0);
+    this.setMicrocode(PRESETS.standard.mc, PRESETS.standard.names);
+    this.reset();
+    this.history = [];
+    this.group = null;
+  }
+  setMicrocode(mc, names){
+    this.mc = mc.slice(0,200); while(this.mc.length<200) this.mc.push(0);
+    this.names = names.slice();
+  }
+  reset(){ // Register zurücksetzen, RAM bleibt
+    this.acc=0; this.db=0; this.ab=0; this.ins=0; this.pc=0; this.mcc=0;
+    this.halted=false; this.error=null; this.lastOp=null; this.lastRam=null; this.cycles=0; this.fetchAddr=0;
+  }
+  opName(code){ return this.names[code] || null; }
+  opcodeOf(name){ const i=this.names.findIndex((n,k)=>k>0 && n && n.toUpperCase()===name.toUpperCase()); return i; }
+  snapshot(){ return {acc:this.acc,db:this.db,ab:this.ab,ins:this.ins,pc:this.pc,mcc:this.mcc,halted:this.halted,error:this.error,lastOp:this.lastOp,cycles:this.cycles,fetchAddr:this.fetchAddr,ram:null}; }
+  beginGroup(){ this.group=[]; }
+  endGroup(){ if(this.group && this.group.length){ this.history.push(this.group); if(this.history.length>3000) this.history.shift(); } this.group=null; }
+  undo(){
+    const g=this.history.pop(); if(!g) return false;
+    for(let i=g.length-1;i>=0;i--){ const s=g[i]; if(s.ram) this.ram[s.ram[0]]=s.ram[1]; }
+    const s=g[0]; Object.assign(this, {acc:s.acc,db:s.db,ab:s.ab,ins:s.ins,pc:s.pc,mcc:s.mcc,halted:s.halted,error:s.error,lastOp:s.lastOp,cycles:s.cycles,fetchAddr:s.fetchAddr});
+    this.lastRam=null; return true;
+  }
+  // führt eine einzelne Mikrooperation aus; advance = Mikrocode-Zähler weiterschalten
+  apply(op, advance){
+    const snap=this.snapshot(); const before={acc:this.acc,db:this.db,ab:this.ab,ins:this.ins,pc:this.pc};
+    let mcSet=false; this.lastRam=null;
+    switch(op){
+      case 1: snap.ram=[this.ab,this.ram[this.ab]]; this.ram[this.ab]=this.db; this.lastRam={addr:this.ab,write:true}; break;
+      case 2: this.db=this.ram[this.ab]; this.lastRam={addr:this.ab,write:false}; break;
+      case 3: this.ins=this.db; break;
+      case 4: this.ab=this.ins%1000; break;
+      case 5: this.fetchAddr=this.ab; this.mcc=Math.floor(this.ins/1000)*10; mcSet=true;
+        if(this.mcc===0){
+          this.error = this.cycles===0
+            ? 'Das Programm muss in Zelle 000 beginnen – dort steht aber kein Befehl, sondern '+fmtVal(this.ins)+'.'
+            : 'Das Programm ist bis Zelle '+fmtAdr(this.ab)+' gelaufen. Dort steht kein Befehl, sondern '+fmtVal(this.ins)+'. Fehlt am Ende ein HLT – oder springt ein JMP an die falsche Stelle?';
+          this.halted=true; }
+        break;
+      case 7: this.mcc=0; mcSet=true; this.cycles++; break;
+      case 8: this.ab=this.pc; break;
+      case 9: if(this.pc<MAX_PC) this.pc++; break;
+      case 10: if(this.acc===0 && this.pc<MAX_PC) this.pc++; break;
+      case 11: this.pc=this.ins%1000; break;
+      case 12: this.acc=0; break;
+      case 13: this.acc=Math.min(MAX_VAL,this.acc+this.db); break;
+      case 14: this.acc=Math.max(0,this.acc-this.db); break;
+      case 15: this.db=this.acc; break;
+      case 16: if(this.acc<MAX_VAL) this.acc++; break;
+      case 17: if(this.acc>0) this.acc--; break;
+      case 18: this.acc=this.db; break;
+      case 19: this.halted=true; break;
+      default:
+        this.error='An Mikrocode-Adresse '+fmtAdr(this.mcc)+' steht kein Mikrobefehl. Fehlt am Ende eines Befehls „mc := 0“ – oder steht im Speicher ein unbekannter Befehl?';
+        this.halted=true; if(this.group) this.group.push(snap); return {op:0,before};
+    }
+    if(advance && !mcSet) this.mcc=Math.min(199,this.mcc+1);
+    this.lastOp=op;
+    if(this.group) this.group.push(snap); else this.history.push([snap]);
+    return {op,before};
+  }
+  microStep(){
+    if(this.halted) return null;
+    return this.apply(this.mc[this.mcc], true);
+  }
+  // führt bis zum Ende des aktuellen Befehls aus (bis mc wieder 0 ist)
+  macroStep(limit=60){
+    if(this.halted) return 0;
+    let n=0;
+    do { this.microStep(); n++; } while(!this.halted && this.mcc!==0 && n<limit);
+    if(n>=limit && this.mcc!==0){ this.error='Ein Befehl hat mehr als '+limit+' Mikroschritte ohne „mc := 0“ ausgeführt. Bitte Mikrocode prüfen.'; this.halted=true; }
+    return n;
+  }
+  // Mikroprogramm eines Befehls (Liste der Codes ab Basisadresse bis 0 oder Ende)
+  routine(base){
+    const out=[]; for(let i=base;i<base+10 && i<200;i++){ const c=this.mc[i]; if(!c) break; out.push(c); }
+    return out;
+  }
+  disasm(v){
+    const op=Math.floor(v/1000), a=v%1000;
+    if(op===0) return null;
+    const n=this.names[op]; if(!n) return null;
+    if(n.toUpperCase()==='HLT' && a===0) return 'HLT';
+    return n+' '+fmtAdr(a);
+  }
+  macroText(v){
+    const op=Math.floor(v/1000), a=fmtAdr(v%1000), n=(this.names[op]||'').toUpperCase();
+    if(op===0) return 'Befehl 00 ist im Befehlssatz nicht belegt.';
+    if(MACRO_TEXT[n]) return MACRO_TEXT[n].replaceAll('{a}',a);
+    if(this.names[op]) return 'Eigener Befehl „'+this.names[op]+'“ mit Adresse '+a+' – was er tut, steht in seinem Mikrocode.';
+    return 'Befehl '+pad(op,2)+' ist im Befehlssatz nicht vorhanden.';
+  }
+}
+
+/* Erklärung eines gerade ausgeführten Mikroschritts in Alltagssprache */
+function explainStep(m, op, before){
+  const a=fmtAdr, v=fmtVal;
+  switch(op){
+    case 8: return 'Der Programmzähler zeigt auf Zelle '+a(m.pc)+'. Diese Adresse wird auf den Adressbus gelegt – der Speicher weiß jetzt, welche Zelle gemeint ist.';
+    case 2: return 'Der Speicher liest Zelle '+a(m.ab)+' und legt ihren Inhalt '+v(m.db)+' auf den Datenbus.';
+    case 1: return 'Der Wert '+v(m.db)+' vom Datenbus wird in Zelle '+a(m.ab)+' geschrieben (vorher stand dort etwas anderes – das ist jetzt überschrieben).';
+    case 3: { const d=m.disasm(m.ins); return 'Der Wert '+v(m.ins)+' wandert ins Befehlsregister. Das Steuerwerk liest ihn als Befehl'+(d?': „'+d+'“':'')+'. Links steht die Befehlsnummer, rechts die Adresse.'; }
+    case 4: return 'Der Adressteil des Befehls ('+a(m.ab)+') kommt auf den Adressbus. Damit wird die Zelle ausgewählt, mit der der Befehl arbeitet.';
+    case 5: return 'Die Befehlsnummer '+pad(Math.floor(m.ins/1000),2)+' wird an den Mikrocode-Zähler gegeben ('+a(m.mcc)+'). Ab hier läuft das kleine Mikroprogramm dieses Befehls – die Holphase ist vorbei.';
+    case 11: return 'Sprung: Der Adressteil '+a(m.pc)+' wird in den Programmzähler geschrieben. Der nächste Befehl wird aus Zelle '+a(m.pc)+' geholt.';
+    case 18: return 'Der Wert '+v(m.acc)+' vom Datenbus wird in den Akku übernommen.';
+    case 15: return 'Der Akku legt seinen Wert '+v(m.acc)+' auf den Datenbus.';
+    case 13: return 'Das Rechenwerk addiert: '+before.acc+' + '+m.db+' = '+m.acc+(before.acc+m.db>MAX_VAL?' (Obergrenze 19999 erreicht)':'')+'.';
+    case 14: return 'Das Rechenwerk subtrahiert: '+before.acc+' − '+m.db+' = '+m.acc+(before.acc-m.db<0?' (negative Zahlen gibt es hier nicht, deshalb 0)':'')+'.';
+    case 16: return 'Der Akku wird um 1 erhöht: '+before.acc+' → '+m.acc+'.';
+    case 17: return 'Der Akku wird um 1 verringert: '+before.acc+' → '+m.acc+(before.acc===0?' (unter 0 geht es nicht)':'')+'.';
+    case 12: return 'Der Akku wird auf 0 gesetzt.';
+    case 9: return 'Der Programmzähler wird um 1 erhöht ('+a(before.pc)+' → '+a(m.pc)+'). So zeigt er auf den nächsten Befehl.';
+    case 10: return before.acc===0
+      ? 'Der Akku ist 0 – deshalb wird der Programmzähler zusätzlich erhöht ('+a(before.pc)+' → '+a(m.pc)+'). Dadurch wird ein Befehl übersprungen.'
+      : 'Der Akku ist nicht 0 ('+before.acc+') – der Programmzähler bleibt bei '+a(m.pc)+'. Nichts wird übersprungen.';
+    case 7: return 'Der Befehl ist fertig. Der Mikrocode-Zähler springt auf 0 – als Nächstes wird der nächste Befehl aus dem Speicher geholt.';
+    case 19: return 'Das Programm ist angehalten (HLT).';
+  }
+  return '';
+}
+
+/* ===== Assembler: Programmtext → Speicher ===== */
+function assemble(text, m){
+  const lines=text.split(/\r?\n/); const errors=[]; const labels={}; const items=[];
+  let addr=0;
+  // Durchgang 1: Adressen + Marken
+  lines.forEach((raw,i)=>{
+    let line=raw.replace(/(;|\/\/|#).*$/,'').trim();
+    if(!line) return;
+    let mm;
+    while((mm=line.match(/^([A-Za-zÄÖÜäöüß_][\wÄÖÜäöüß]*)\s*:\s*/)) && m.opcodeOf(mm[1])<0){
+      const L=mm[1].toLowerCase(); if(labels[L]!==undefined) errors.push({line:i+1,msg:'Die Marke „'+mm[1]+'“ gibt es doppelt.'});
+      labels[L]=addr; line=line.slice(mm[0].length).trim();
+    }
+    if((mm=line.match(/^(\d{1,3})\s*:\s*/))){ addr=parseInt(mm[1]); line=line.slice(mm[0].length).trim(); }
+    if(!line) return;
+    if(addr>999){ errors.push({line:i+1,msg:'Adresse größer als 999.'}); return; }
+    items.push({line:i+1,addr,src:line}); addr++;
+  });
+  // Durchgang 2: übersetzen
+  const out=[];
+  for(const it of items){
+    const s=it.src; let mm;
+    if((mm=s.match(/^(\d{1,2})\.(\d{3})$/))){ out.push({addr:it.addr,val:parseInt(mm[1])*1000+parseInt(mm[2]),type:'raw'}); continue; }
+    if((mm=s.match(/^-?\d+$/))){
+      const v=parseInt(s); if(v<0||v>MAX_VAL){ errors.push({line:it.line,msg:'Zahlen müssen zwischen 0 und 19999 liegen.'}); continue; }
+      out.push({addr:it.addr,val:v,type:'data'}); continue;
+    }
+    mm=s.match(/^([A-Za-zÄÖÜäöüß]\w*)\s*(.*)$/);
+    if(!mm){ errors.push({line:it.line,msg:'Unverständliche Zeile: „'+s+'“.'}); continue; }
+    const op=m.opcodeOf(mm[1]);
+    if(op<0){ errors.push({line:it.line,msg:'Unbekannter Befehl „'+mm[1]+'“. Erlaubt: '+m.names.slice(1).filter(Boolean).join(', ')+'.'}); continue; }
+    let arg=mm[2].trim(), a=0;
+    if(arg===''){
+      if(m.names[op].toUpperCase()!=='HLT'){ errors.push({line:it.line,msg:m.names[op]+' braucht eine Adresse, z. B. „'+m.names[op]+' 10“.'}); continue; }
+    } else if(/^\d+$/.test(arg)){ a=parseInt(arg); if(a>999){ errors.push({line:it.line,msg:'Adresse größer als 999.'}); continue; } }
+    else if(labels[arg.toLowerCase()]!==undefined){ a=labels[arg.toLowerCase()]; }
+    else { errors.push({line:it.line,msg:'Unbekannte Adresse oder Marke „'+arg+'“.'}); continue; }
+    out.push({addr:it.addr,val:op*1000+a,type:'code'});
+  }
+  const seen={}; for(const o of out){ if(seen[o.addr]){ errors.push({line:0,msg:'Zelle '+fmtAdr(o.addr)+' wird mehrfach belegt.'}); } seen[o.addr]=1; }
+  return {cells:out, errors};
+}
+
+/* Speicher → Programmtext */
+function disassemble(m, types){
+  let last=-1; const lines=[];
+  let maxUsed=-1; for(let i=0;i<RAM_SIZE;i++) if(m.ram[i]!==0) maxUsed=i;
+  for(let i=0;i<=maxUsed;i++){
+    const v=m.ram[i];
+    if(v===0 && types[i]!=='data') continue;
+    const d=types[i]==='data'?null:m.disasm(v);
+    const txt=d?d.replace(/ 0*(\d)/,' $1'):String(v);
+    lines.push((i===last+1?'':pad(i,3)+': ')+txt); last=i;
+  }
+  return lines.join('\n');
+}
+
+/* Headless-Lauf für Aufgaben-Prüfung */
+function runProgram(m, maxMicro=200000){
+  m.reset(); let n=0; const h=m.history; m.history=[];
+  while(!m.halted && n<maxMicro){ m.apply(m.mc[m.mcc],true); n++; if(m.history.length>50) m.history.length=0; }
+  m.history=h;
+  return {halted:m.halted && !m.error, error:m.error, steps:n, timeout:n>=maxMicro};
+}
+
+if(typeof module!=='undefined') module.exports={Machine,PRESETS,OPS,assemble,disassemble,runProgram,explainStep,fmtVal,fmtAdr};
+
+/* ===== OBERFLÄCHE ===== */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const m=new Machine();
+let types=new Array(RAM_SIZE).fill('');
+let mode='standard', running=false, runTimer=null, speed=2, manual=false, selCell=0, hlTimer=null;
+let cycleStart={pc:0,acc:0,wrote:false};
+const SPEEDS=[{ms:1400,l:'sehr langsam'},{ms:800,l:'langsam'},{ms:420,l:'mittel'},{ms:170,l:'schnell'},{ms:45,l:'sehr schnell'},{turbo:true,l:'Turbo'}];
+
+/* --- Ereignisse (für die Tour) --- */
+const listeners={};
+function on(ev,f){(listeners[ev]=listeners[ev]||[]).push(f)}
+function emit(ev,p){(listeners[ev]||[]).forEach(f=>{try{f(p)}catch(e){console.error(e)}}); tourHook(ev,p);}
+
+/* --- Kleine Helfer --- */
+let toastT;
+function toast(msg,kind){const t=$('#toast');t.textContent=msg;t.className='on '+(kind||'');clearTimeout(toastT);toastT=setTimeout(()=>t.className='',3200);}
+function openModal(id){if(tour&&id!=='mConfirm')endTour();$('#'+id).classList.add('on')}
+function closeModal(id){$('#'+id).classList.remove('on')}
+function closeAllModals(){$$('.modal-bg.on').forEach(x=>x.classList.remove('on'))}
+function confirmBox(title,html,yes){return new Promise(res=>{
+  $('#cfTitle').textContent=title;$('#cfText').innerHTML=html;$('#cfYes').textContent=yes||'OK';openModal('mConfirm');
+  $('#cfYes').onclick=()=>{closeModal('mConfirm');res(true)};$('#cfNo').onclick=()=>{closeModal('mConfirm');res(false)};
+});}
+function ramUsed(){return m.ram.some(v=>v!==0)}
+
+/* --- Schaubild aufbauen --- */
+const OPPOS={8:[604,62,64],9:[568,168,46],10:[630,168,62],11:[706,170,62],4:[760,140,64],3:[515,236,56],5:[588,290,62],7:[688,338,62],19:[752,338,52],2:[222,208,64],1:[222,264,64],18:[290,279,64],15:[390,279,64],12:[235,400,57],16:[293,400,57],17:[351,400,57],13:[409,400,57],14:[467,400,57]};
+const HL={1:['bus-db','db-rect'],2:['bus-db','db-rect'],3:['bus-db','db-rect','irop-rect','iradr-rect'],4:['w-ins-ab','bus-ab','iradr-rect','ab-rect'],5:['w-ins-mc','irop-rect','mc-rect'],7:['mc-rect'],8:['w-pc-ab','bus-ab','pc-rect','ab-rect'],9:['pc-rect'],10:['pc-rect','acc-rect'],11:['w-ins-pc','iradr-rect','pc-rect'],12:['acc-rect'],13:['bus-db','acc-rect','db-rect'],14:['bus-db','acc-rect','db-rect'],15:['w-acc-db','bus-db','acc-rect','db-rect'],16:['acc-rect'],17:['acc-rect'],18:['w-db-acc','bus-db','acc-rect','db-rect'],19:[]};
+function buildSvg(){
+  let h='';
+  for(const k of OP_ORDER){const [x,y,w]=OPPOS[k];const mc=(k===5||k===7)?' mcop':'';
+    h+=`<g class="op${mc}" id="op${k}" data-op="${k}" transform="translate(${x-w/2},${y-11})"><rect width="${w}" height="22" rx="11"/><text x="${w/2}" y="15" text-anchor="middle">${OPS[k].label}</text><title>${OPS[k].label}: ${OPS[k].short}</title></g>`;}
+  $('#opButtons').innerHTML=h;
+  let r='';for(let i=0;i<9;i++){const y=88+i*31;r+=`<g class="ramrow" id="rr${i}"><rect x="25" y="${y}" width="145" height="27" rx="6"/><text class="a" x="34" y="${y+18}"></text><text class="v" x="161" y="${y+18}" text-anchor="end"></text></g>`;}
+  $('#ramRows').innerHTML=r;
+  $$('#opButtons .op').forEach(g=>g.addEventListener('click',()=>opClick(+g.dataset.op)));
+}
+function renderMiniRam(hot){
+  const c=m.ab,s=Math.max(0,Math.min(RAM_SIZE-9,c-4));
+  for(let i=0;i<9;i++){const a=s+i,g=$('#rr'+i);
+    g.querySelector('.a').textContent=fmtAdr(a)+(a===m.pc?' PC':'');g.querySelector('.v').textContent=fmtVal(m.ram[a]);
+    g.classList.toggle('cur',a===c);g.classList.toggle('hot',a===c&&!!hot);g.classList.toggle('pcrow',a===m.pc);}
+}
+let hotEls=[],miniHot=false;
+function clearHot(){hotEls.forEach(e=>e.classList.remove('hot'));hotEls=[];miniHot=false;}
+function highlight(op,dur){
+  clearHot();if(!op)return;
+  [...(HL[op]||[]),'op'+op].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.add('hot');hotEls.push(e);}});
+  miniHot=(op===1||op===2);
+  clearTimeout(hlTimer);if(dur)hlTimer=setTimeout(()=>{clearHot();renderMiniRam(false)},dur);
+}
+function setSvgText(id,val,quiet){const e=document.getElementById(id);if(e.textContent===val)return;e.textContent=val;if(quiet)return;e.classList.remove('changed');e.getBoundingClientRect();e.classList.add('changed');}
+
+/* --- Speichertabelle --- */
+let rowEls=[],rowCache=[];const mk={pc:-1,ab:-1,sel:-1};
+function buildRamTable(){
+  let h='';for(let i=0;i<RAM_SIZE;i++)h+=`<tr data-a="${i}"><td class="pcm"></td><td class="adr">${fmtAdr(i)}</td><td class="val"></td><td class="mn"></td></tr>`;
+  $('#ramBody').innerHTML=h;rowEls=[...$('#ramBody').children];rowCache=new Array(RAM_SIZE).fill(null);
+  $('#ramBody').addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr)selectCell(+tr.dataset.a,true);});
+}
+function meaningHTML(i){
+  const v=m.ram[i],t=types[i];
+  if(t==='data')return `<span class="num">Zahl ${v}</span>`;
+  if(v===0&&t!=='code')return '';
+  const d=m.disasm(v);
+  if(d){const p=d.split(' ');return `<span class="cmd">${esc(p[0])}</span>${p[1]?' <span class="op">'+p[1]+'</span>':''}`;}
+  return `<span class="num">Zahl ${v}</span>`;
+}
+function renderRam(force,quiet){
+  for(let i=0;i<RAM_SIZE;i++){const key=m.ram[i]+'|'+types[i];if(!force&&rowCache[i]===key)continue;
+    const r=rowEls[i];r.children[2].textContent=fmtVal(m.ram[i]);r.children[3].innerHTML=meaningHTML(i);r.classList.toggle('zero',m.ram[i]===0);
+    if(rowCache[i]!==null&&rowCache[i]!==key&&!quiet){r.classList.remove('flash');void r.offsetWidth;r.classList.add('flash');}
+    rowCache[i]=key;}
+  markRows();
+}
+function mark(k,i,cls){if(mk[k]===i)return;if(mk[k]>=0){rowEls[mk[k]].classList.remove(cls);if(k==='pc')rowEls[mk[k]].children[0].textContent='';}
+  if(i>=0){rowEls[i].classList.add(cls);if(k==='pc')rowEls[i].children[0].textContent='▶';}mk[k]=i;}
+function markRows(){mark('pc',m.pc,'pc');mark('ab',(m.lastRam&&!manual)||manual?m.ab:-1,'ab');mark('sel',selCell,'sel');}
+function scrollRow(i){const w=$('#ramWrap'),r=rowEls[i];if(!r||!w.clientHeight)return;const top=r.offsetTop,h=r.offsetHeight;
+  if(top<w.scrollTop+32||top+h>w.scrollTop+w.clientHeight)w.scrollTop=top-w.clientHeight/3;}
+
+/* --- Zellen-Editor --- */
+function fillCmdSelect(){let h='<option value="0">Zahl (Daten)</option>';m.names.forEach((n,k)=>{if(k>0&&n)h+=`<option value="${k}">${esc(n)}</option>`});$('#edCmd').innerHTML=h;}
+function selectCell(i,focus){
+  selCell=Math.max(0,Math.min(999,i));const v=m.ram[selCell],op=Math.floor(v/1000),t=types[selCell];
+  $('#edAdr').textContent=fmtAdr(selCell);
+  if(t==='data'||op===0||!m.names[op]){$('#edCmd').value='0';$('#edArg').value=(v===0&&t!=='data')?'':v;}
+  else{$('#edCmd').value=String(op);$('#edArg').value=(m.names[op].toUpperCase()==='HLT'&&v%1000===0)?'':v%1000;}
+  updEdHint();markRows();scrollRow(selCell);if(focus)$('#edCmd').focus({preventScroll:true});
+}
+function computeEd(){
+  const c=+$('#edCmd').value,s=$('#edArg').value.trim();
+  if(c===0){if(s==='')return{val:0,type:''};if(!/^\d+$/.test(s))return{err:'Bitte eine ganze Zahl eingeben.'};const v=+s;if(v>MAX_VAL)return{err:'Zahlen gehen nur bis 19999.'};return{val:v,type:'data'};}
+  const n=m.names[c];if(s===''){if(n.toUpperCase()==='HLT')return{val:c*1000,type:'code'};return{err:n+' braucht eine Adresse (0–999).'};}
+  if(!/^\d+$/.test(s)||+s>999)return{err:'Die Adresse muss zwischen 0 und 999 liegen.'};return{val:c*1000+(+s),type:'code'};
+}
+function updEdHint(){const c=+$('#edCmd').value;$('#edArg').placeholder=c===0?'Zahl 0–19999':'Adresse 0–999';const r=computeEd();$('#edRaw').textContent=r.err?'':'→ '+fmtVal(r.val);}
+function applyEd(next){const r=computeEd();if(r.err){toast(r.err,'bad');return;}
+  m.ram[selCell]=r.val;types[selCell]=r.type;renderRam();renderCpu();save();emit('ramedit',selCell);if(next)selectCell(selCell+1,true);}
+
+/* --- Darstellung Register / Info --- */
+function renderCpu(quiet){
+  setSvgText('v-ab',fmtAdr(m.ab),quiet);setSvgText('v-db',pad(m.db,5),quiet);setSvgText('v-acc',pad(m.acc,5),quiet);
+  setSvgText('v-pc',fmtAdr(m.pc),quiet);setSvgText('v-irop',pad(Math.floor(m.ins/1000),2),quiet);setSvgText('v-iradr',fmtAdr(m.ins%1000),quiet);
+  setSvgText('v-mc',fmtAdr(m.mcc),quiet);
+  const d=m.disasm(m.ins);$('#v-mnem').textContent=d?'= '+d:(m.ins?'(kein Befehl)':'');
+  $('#lamp').classList.toggle('on',m.acc===0);
+  const nx=m.mc[m.mcc];
+  $('#v-nextop').textContent=manual?'(Handbetrieb)':m.halted?'angehalten':(OPS[nx]?OPS[nx].label:'— leer —');
+  $('#v-mcaddr').textContent='Mikrocode-Adr. '+fmtAdr(m.mcc);
+  $('#v-phase').textContent=manual?'Du steuerst selbst':m.halted?'':(m.mcc<10?'① Holphase':'② Ausführung: '+(m.names[Math.floor(m.mcc/10)]||'?'));
+  $$('#opButtons .op.next').forEach(e=>e.classList.remove('next'));
+  if(!manual&&!m.halted&&OPS[nx])$('#op'+nx).classList.add('next');
+  renderMiniRam(miniHot);
+}
+function li(c,st){return `<li class="${st}"><span class="lab">${OPS[c]?OPS[c].label:'?'}</span><span>${OPS[c]?OPS[c].short:'unbekannter Mikrobefehl'}</span></li>`;}
+function renderInfo(){
+  const pc=$('#phaseCard');
+  if(manual){
+    pc.className='card phase manual';
+    pc.innerHTML=`<h3>Handbetrieb</h3><p class="curtxt"><b>Du bist das Steuerwerk.</b> Klicke im Schaubild auf die gelben Knöpfe, um Mikroschritte selbst auszulösen. Auf <b>Adressbus</b> und <b>Datenbus</b> kannst du klicken und einen Wert eintragen.</p><h3 style="margin-top:10px">Rezepte</h3><ol class="recipe"><li>Zahl aus einer Zelle holen: Adressbus anklicken, Adresse eintragen → <code>ram → db</code> → <code>db → acc</code></li><li>Zahl addieren: Adresse eintragen → <code>ram → db</code> → <code>plus</code></li><li>Akku speichern: Adresse eintragen → <code>acc → db</code> → <code>db → ram</code></li></ol>`;
+    $('#microCard').style.display='none';return;
+  }
+  $('#microCard').style.display='';
+  const fetch=m.mcc<10;
+  const phs=(a,b)=>`<div class="phases"><span class="ph ${a}">① Holen</span><span class="ph ${b}">② Ausführen</span></div>`;
+  if(m.halted){
+    pc.className='card phase halt';
+    pc.innerHTML=phs('','')+(m.error?`<div class="curinstr"><b style="color:var(--bad);font-size:16px">⚠ Fehler</b></div><p class="curtxt">${esc(m.error)}</p>`:`<div class="curinstr"><b>■ Angehalten</b></div><p class="curtxt">Das Programm ist beendet. <b>Zurücksetzen</b> oder <b>Start</b> beginnt wieder bei Zelle 000.</p>`);
+  }else if(fetch){
+    const a=m.pc,v=m.ram[a],d=m.disasm(v);
+    pc.className='card phase';
+    pc.innerHTML=phs('on','')+`<div class="curinstr">Befehl aus Zelle ${fmtAdr(a)} wird geholt<b>${d?esc(d):fmtVal(v)}</b></div><p class="curtxt">Das Steuerwerk holt den nächsten Befehl aus dem Speicher ins Befehlsregister.</p>`;
+  }else{
+    const d=m.disasm(m.ins);
+    pc.className='card phase';
+    pc.innerHTML=phs('done','on')+`<div class="curinstr">Befehl aus Zelle ${fmtAdr(m.fetchAddr)}<b>${d?esc(d):fmtVal(m.ins)}</b></div><p class="curtxt">${esc(m.macroText(m.ins))}</p>`;
+  }
+  let h=`<div class="mgroup"><span>① Holen (${esc(m.names[0]||'FETCH')})</span><span class="mono">ab 000</span></div><ol class="micro">`;
+  m.routine(0).forEach((c,i)=>{h+=li(c,!fetch?'done':i<m.mcc?'done':(i===m.mcc&&!m.halted?'next':'todo'))});h+='</ol>';
+  if(fetch)h+='<div class="mgroup"><span>② Ausführen</span></div><div class="placeholder">Welcher Befehl ausgeführt wird, steht erst fest, wenn er geholt ist.</div>';
+  else{const op=Math.floor(m.mcc/10),base=op*10,r=m.routine(base);
+    h+=`<div class="mgroup"><span>② Ausführen: ${esc(m.names[op]||('Befehl '+op))}</span><span class="mono">ab ${fmtAdr(base)}</span></div><ol class="micro">`;
+    r.forEach((c,i)=>{h+=li(c,base+i<m.mcc?'done':(base+i===m.mcc&&!m.halted?'next':'todo'))});
+    h+='</ol>'+(r.length?'':'<div class="placeholder">Für diesen Befehl gibt es keinen Mikrocode.</div>');}
+  $('#microList').innerHTML=h;
+}
+function renderStatus(){
+  const ml={standard:'Standard',bonsai:'Bonsai',custom:'eigener'}[mode];
+  $('#statusbar').innerHTML=`<span>Programmzähler <b>${fmtAdr(m.pc)}</b></span><span>Akku <b>${m.acc}</b></span><span>ausgeführte Befehle <b>${m.cycles}</b></span><span>Befehlssatz <b>${ml}</b></span>`;
+  $('#btnMicro').disabled=$('#btnMacro').disabled=manual||running||m.halted;
+  $('#btnRun').disabled=manual;$('#btnUndo').disabled=!m.history.length;
+  const b=$('#btnRun');b.classList.toggle('pause',running);b.innerHTML=running?'⏸ Pause':'▶ Start';
+}
+function render(quiet){renderRam(false,quiet);renderCpu(quiet);renderInfo();renderStatus();save();}
+function setNow(op,txt){$('#nowOp').textContent=op;$('#nowTxt').innerHTML=txt;}
+const logItems=[];
+function addLog(op){logItems.unshift(`<li><span>[${fmtAdr(m.mcc)}]</span> <b>${OPS[op].label}</b> · Akku ${m.acc} · PC ${fmtAdr(m.pc)}</li>`);if(logItems.length>40)logItems.length=40;}
+function renderLog(){$('#log').innerHTML=logItems.join('');}
+
+/* --- Ausführung --- */
+function rawStep(){
+  if(m.mcc===0)cycleStart={pc:m.pc,acc:m.acc,wrote:false};
+  const r=m.microStep();if(!r)return null;
+  if(r.op===1)cycleStart.wrote=true;if(r.op)addLog(r.op);
+  if(r.op===7&&running&&m.pc===cycleStart.pc&&m.acc===cycleStart.acc&&!cycleStart.wrote){
+    running=false;clearTimeout(runTimer);toast('Endlosschleife: Der Befehl in Zelle '+fmtAdr(m.pc)+' springt immer wieder auf sich selbst. Angehalten.','bad');}
+  return r;
+}
+function showStep(r,dur){
+  if(!r)return;
+  if(r.op){setNow(OPS[r.op].label,esc(explainStep(m,r.op,r.before)));highlight(r.op,dur);}
+  else{setNow('Fehler','<span style="color:var(--bad)">'+esc(m.error)+'</span>');}
+  renderLog();
+}
+function hasProgram(){return m.ram.some(v=>{const o=Math.floor(v/1000);return o>0&&!!m.names[o];});}
+function noProgram(){
+  if(manual||hasProgram())return false;
+  toast('Im Speicher steht noch kein Programm.');
+  setNow('Kein Programm','Im Speicher stehen noch keine Befehle – der Rechner hätte nichts zu tun.<br><br><button class="btn small primary" onclick="openModal(\'mExamples\')">📂 Beispiel laden</button> <button class="btn small" onclick="showTab(\'tabText\')">✏️ Programm schreiben</button>');
+  return true;
+}
+function microClick(){if(noProgram())return;if(m.halted||manual)return;const r=rawStep();showStep(r,0);render();if(r){emit('op',r.op);if(r.op===7)emit('macro');}if(m.halted)onHalt();}
+function macroClick(){
+  if(noProgram())return;
+  if(m.halted||manual)return;const startIns=m.mcc===0;m.beginGroup();let n=0,r;const ops=[];
+  do{r=rawStep();n++;if(r&&r.op)ops.push(r.op);}while(!m.halted&&m.mcc!==0&&n<60);
+  m.endGroup();
+  if(n>=60&&m.mcc!==0){m.error='Ein Befehl hat mehr als 60 Mikroschritte ohne „mc := 0“ ausgeführt. Bitte den Mikrocode prüfen.';m.halted=true;}
+  const ins=m.ins,d=m.disasm(ins)||fmtVal(ins);
+  highlight(ops[ops.length-1],0);
+  if(m.error)setNow('Fehler','<span style="color:var(--bad)">'+esc(m.error)+'</span>');
+  else setNow(d,esc(m.macroText(ins))+`<br><span style="font-size:12px;color:var(--muted)">${startIns?'':'Rest des Befehls: '}${ops.length} Mikroschritte: ${ops.map(o=>OPS[o].label).join(' · ')}</span>`);
+  renderLog();render();emit('macro');if(m.halted)onHalt();
+}
+function onHalt(){
+  running=false;clearTimeout(runTimer);render();
+  if(m.error)toast('Angehalten: '+m.error,'bad');else toast('Programm beendet (HLT). ✓','ok');
+  emit('halted');
+}
+function tick(){
+  if(!running)return;const sp=SPEEDS[speed];
+  if(sp.turbo){const t0=performance.now();let last=null;
+    while(!m.halted&&running&&performance.now()-t0<30){m.beginGroup();let k=0;do{const r=rawStep();if(r&&r.op)last=r.op;k++;}while(!m.halted&&m.mcc!==0&&k<60&&running);m.endGroup();}
+    if(last){setNow(OPS[last].label,'Turbo: Das Programm läuft so schnell, dass nicht jeder Schritt angezeigt wird.');highlight(last,0);}
+    renderLog();render(true);
+  }else{const r=rawStep();showStep(r,sp.ms*0.85);render(sp.ms<100);if(r)emit('op',r.op);}
+  if(m.halted){onHalt();return;}
+  if(running)runTimer=setTimeout(tick,sp.turbo?0:sp.ms);else render();
+}
+function startRun(){if(manual||noProgram())return;if(m.halted){m.reset();m.history=[];toast('Neustart ab Zelle 000');}running=true;renderStatus();emit('run');tick();}
+function stopRun(){if(!running)return;running=false;clearTimeout(runTimer);render();}
+function toggleRun(){running?stopRun():startRun();}
+function doUndo(){stopRun();if(!m.undo()){toast('Nichts mehr zum Zurücknehmen.');return;}clearHot();if(m.lastOp)highlight(m.lastOp,0);setNow('↶ zurück','Der letzte Schritt wurde rückgängig gemacht.');render();emit('undo');}
+function doReset(){stopRun();m.reset();m.history=[];clearHot();logItems.length=0;renderLog();setNow('–','Register zurückgesetzt. Der Programmzähler steht wieder auf 000. Der Speicher bleibt erhalten.');render();scrollRow(0);selectCell(selCell);emit('reset');}
+
+/* --- Handbetrieb --- */
+function setManual(on){stopRun();manual=on;document.body.classList.toggle('manual',on);$('#manual').checked=on;m.halted=false;m.error=null;clearHot();
+  setNow(on?'Handbetrieb':'–',on?'Klicke im Schaubild auf einen gelben Knopf.':'Das Steuerwerk arbeitet wieder automatisch.');render();emit(on?'manual-on':'manual-off');}
+function opClick(k){
+  if(!manual){setNow(OPS[k].label,'<b>'+OPS[k].short+'.</b><br><span style="color:var(--muted)">Im <b>Handbetrieb</b> kannst du diesen Mikroschritt selbst auslösen.</span>');return;}
+  if(k===5||k===7)return;
+  const r=m.apply(k,false);showStep(r,0);
+  if(k===19){m.halted=false;setNow('stopp','Im Automatikbetrieb würde das Programm jetzt anhalten.');}
+  addLog(k);renderLog();render();if(m.lastRam)scrollRow(m.ab);emit('op',k);
+}
+let vpTarget=null;
+function openValPop(which){
+  if(!manual){toast('Im Handbetrieb kannst du hier selbst einen Wert eintragen.');return;}
+  vpTarget=which;const el=$(which==='ab'?'#ab-rect':'#db-rect').getBoundingClientRect(),p=$('#valPop');
+  $('#vpLbl').textContent=which==='ab'?'Adressbus (0–999)':'Datenbus (0–19999)';$('#vpIn').value=which==='ab'?m.ab:m.db;
+  p.classList.add('on');p.style.left=Math.min(innerWidth-p.offsetWidth-8,Math.max(8,el.left))+'px';p.style.top=(el.bottom+8)+'px';$('#vpIn').select();$('#vpIn').focus();
+}
+function applyValPop(){
+  const s=$('#vpIn').value.trim(),max=vpTarget==='ab'?999:MAX_VAL;
+  if(!/^\d+$/.test(s)||+s>max){toast('Bitte eine Zahl von 0 bis '+max+' eingeben.','bad');return;}
+  m.history.push([m.snapshot()]);
+  if(vpTarget==='ab'){m.ab=+s;highlight(0);document.getElementById('bus-ab').classList.add('hot');hotEls.push(document.getElementById('bus-ab'));setNow('Adressbus = '+fmtAdr(m.ab),'Du hast die Adresse '+fmtAdr(m.ab)+' auf den Adressbus gelegt. Der Speicher weiß jetzt, welche Zelle gemeint ist.');}
+  else{m.db=+s;setNow('Datenbus = '+pad(m.db,5),'Du hast den Wert '+m.db+' auf den Datenbus gelegt.');}
+  $('#valPop').classList.remove('on');render();if(vpTarget==='ab')scrollRow(m.ab);emit(vpTarget+'-set',+s);
+}
+
+/* --- Befehlssatz-Modus --- */
+function sameMc(p){return p.mc.every((v,i)=>v===m.mc[i])&&p.names.length===m.names.filter(Boolean).length&&p.names.every((n,i)=>n===m.names[i]);}
+function detectMode(){mode=sameMc(PRESETS.standard)?'standard':sameMc(PRESETS.bonsai)?'bonsai':'custom';}
+function updModeUI(){$$('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));$('#customBadge').classList.toggle('show',mode==='custom');}
+function afterMcChange(resetRegs){if(resetRegs){m.reset();m.history=[];}fillCmdSelect();renderRam(true,true);selectCell(selCell);updModeUI();render(true);}
+async function setMode(md,force){
+  if(md===mode)return true;
+  if(!force&&mode==='custom'&&!(await confirmBox('Eigenen Befehlssatz ersetzen?','Dein geänderter Mikrocode wird durch den '+(md==='bonsai'?'Bonsai':'Standard')+'-Befehlssatz ersetzt.','Ersetzen')))return false;
+  stopRun();m.setMicrocode(PRESETS[md].mc,PRESETS[md].names);mode=md;afterMcChange(true);
+  if(!force)toast(md==='bonsai'?'Bonsai-Befehlssatz: INC, DEC, JMP, TST, HLT':'Standard-Befehlssatz: TAKE, ADD, SUB, SAVE, JMP, TST, INC, DEC, NULL, HLT');
+  emit('mode',md);return true;
+}
+
+/* --- Programmtext --- */
+function loadText(text){
+  const r=assemble(text,m);
+  if(r.errors.length){$('#asmMsg').innerHTML='<ul class="errlist">'+r.errors.map(e=>`<li>${e.line?'Zeile '+e.line+': ':''}${esc(e.msg)}</li>`).join('')+'</ul>';return false;}
+  m.ram.fill(0);types.fill('');r.cells.forEach(c=>{m.ram[c.addr]=c.val;types[c.addr]=c.type==='raw'?'':c.type;});
+  stopRun();m.reset();m.history=[];clearHot();logItems.length=0;renderLog();
+  $('#asmMsg').innerHTML=`<div class="okline">✓ ${r.cells.length} Zellen in den Speicher geschrieben (der restliche Speicher ist jetzt 0). Start bei Zelle 000.</div>`;
+  render();selectCell(0);return true;
+}
+function assembleClick(){if(loadText($('#progText').value)){emit('assembled');toast('Programm im Speicher ✓','ok');}}
+function showTab(id){$$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));$$('.tabpane').forEach(p=>p.classList.toggle('on',p.id===id));if(id==='tabText')emit('tab-text');else scrollRow(selCell);}
+
+/* --- Beispiele --- */
+const P_MUL=`; Multiplikation: Zelle 20 · Zelle 21 -> Zelle 22
+NULL 22           ; Ergebnis auf 0
+schleife: TST 21  ; Zelle 21 = 0? Dann JMP überspringen
+JMP rechne
+HLT
+rechne: TAKE 22
+ADD 20            ; Ergebnis + Zelle 20
+SAVE 22
+DEC 21            ; Zähler verringern
+JMP schleife`;
+const P_MAX=`; Größere Zahl von Zelle 20 und 21 -> Zelle 22
+TAKE 20
+SUB 21            ; Akku = 20 - 21 (nie unter 0)
+SAVE 23           ; Hilfszelle
+TST 23            ; Differenz 0? -> Zelle 21 ist größer/gleich
+JMP erste
+TAKE 21
+JMP fertig
+erste: TAKE 20
+fertig: SAVE 22
+HLT`;
+const P_BONSAI=`; Bonsai-Addition: Zelle 20 wird zu Zelle 21 addiert
+start: TST 20     ; Zelle 20 leer? Dann fertig
+JMP weiter
+HLT
+weiter: DEC 20
+INC 21
+JMP start`;
+const EXAMPLES=[
+  {id:'add',title:'Addition',mode:'standard',d:'Zwei Zahlen addieren mit TAKE, ADD, SAVE – der Klassiker für den Einstieg.',text:`; Addition: Zelle 10 + Zelle 11 -> Zelle 12
+TAKE 10
+ADD 11
+SAVE 12
+HLT
+
+10: 5
+7`},
+  {id:'count',title:'Countdown (Schleife)',mode:'standard',d:'TST und JMP bilden eine Schleife, die Zelle 10 bis auf 0 herunterzählt.',text:`; Countdown: Zelle 10 auf 0 herunterzählen
+start: TST 10     ; Zelle 10 = 0? Dann JMP überspringen
+JMP weiter
+HLT
+weiter: DEC 10
+JMP start
+
+10: 5`},
+  {id:'mul',title:'Multiplikation',mode:'standard',d:'Multiplikation als wiederholte Addition: Zelle 20 · Zelle 21 → Zelle 22.',text:P_MUL+`\n\n20: 6\n7`},
+  {id:'max',title:'Größere Zahl finden',mode:'standard',d:'Vergleich zweier Zahlen mit SUB und TST. Ergebnis in Zelle 22.',text:P_MAX+`\n\n20: 9\n14`},
+  {id:'bonsai',title:'Bonsai: Addition',mode:'bonsai',d:'Mit nur fünf Befehlen addieren (INC, DEC, JMP, TST, HLT).',text:P_BONSAI+`\n\n20: 3\n4`},
+  {id:'empty',title:'Leerer Speicher',mode:null,d:'Alles auf 0 – Platz für eigene Programme.',text:''}
+];
+async function loadExample(id,force){
+  const ex=EXAMPLES.find(e=>e.id===id);
+  if(!force&&ramUsed()&&!(await confirmBox('Speicher ersetzen?','Das Beispiel „'+esc(ex.title)+'“ ersetzt den aktuellen Speicherinhalt.','Laden')))return;
+  if(ex.mode&&ex.mode!==mode){if(!(await setMode(ex.mode,force)))return;}
+  $('#progText').value=ex.text;loadText(ex.text);$('#asmMsg').innerHTML='';closeModal('mExamples');
+  if(!force)toast('Beispiel „'+ex.title+'“ geladen');setNow('–','Beispiel geladen. Klicke auf <b>Befehl</b>, <b>Mikroschritt</b> oder <b>Start</b>.');emit('example',id);
+}
+function renderExamples(){$('#exList').innerHTML=EXAMPLES.map(e=>`<div class="item"><div class="grow"><div class="t">${esc(e.title)} ${e.mode==='bonsai'?'<span class="tag bonsai">Bonsai</span>':''}</div><div class="d">${esc(e.d)}</div></div><button class="btn primary small" data-ex="${e.id}">Laden</button></div>`).join('');
+  $$('#exList [data-ex]').forEach(b=>b.onclick=()=>loadExample(b.dataset.ex));}
+
+/* --- Aufgaben --- */
+const TASKS=[
+  {title:'Summe',mode:'standard',text:'Addiere die Zahlen in Zelle 020 und 021. Das Ergebnis soll in Zelle 022 stehen. Das Programm endet mit HLT.',hint:'Du brauchst TAKE, ADD, SAVE und HLT.',
+   tests:[[{20:3,21:4},{22:7}],[{20:0,21:9},{22:9}],[{20:120,21:35},{22:155}]],sol:`TAKE 20\nADD 21\nSAVE 22\nHLT`},
+  {title:'Verdreifachen',mode:'standard',text:'Berechne das Dreifache der Zahl in Zelle 020 und speichere es in Zelle 021.',hint:'Es gibt keinen Multiplikationsbefehl – aber du kannst mehrfach addieren.',
+   tests:[[{20:2},{21:6}],[{20:0},{21:0}],[{20:111},{21:333}]],sol:`TAKE 20\nADD 20\nADD 20\nSAVE 21\nHLT`},
+  {title:'Tauschen',mode:'standard',text:'Vertausche die Inhalte der Zellen 020 und 021.',hint:'Du brauchst eine dritte Zelle als Zwischenspeicher, z. B. Zelle 030.',
+   tests:[[{20:3,21:8},{20:8,21:3}],[{20:0,21:5},{20:5,21:0}],[{20:42,21:42},{20:42,21:42}]],sol:`TAKE 20\nSAVE 30\nTAKE 21\nSAVE 20\nTAKE 30\nSAVE 21\nHLT`},
+  {title:'Multiplizieren',mode:'standard',text:'Berechne Zelle 020 · Zelle 021 und speichere das Ergebnis in Zelle 022.',hint:'Wiederholte Addition: Solange Zelle 021 nicht 0 ist, addiere Zelle 020 zum Ergebnis und verringere Zelle 021 um 1. TST überspringt den nächsten Befehl, wenn die Zelle 0 ist.',
+   tests:[[{20:3,21:4},{22:12}],[{20:0,21:5},{22:0}],[{20:6,21:0},{22:0}],[{20:7,21:7},{22:49}]],sol:P_MUL},
+  {title:'Größere Zahl',mode:'standard',text:'Schreibe die größere der beiden Zahlen aus Zelle 020 und 021 in Zelle 022.',hint:'SUB rechnet nie unter 0. Ist 020 − 021 = 0, dann ist Zelle 021 mindestens so groß wie Zelle 020.',
+   tests:[[{20:3,21:4},{22:4}],[{20:9,21:2},{22:9}],[{20:5,21:5},{22:5}],[{20:0,21:0},{22:0}]],sol:P_MAX},
+  {title:'Bonsai: Addieren',mode:'bonsai',text:'Nur mit INC, DEC, JMP, TST und HLT: Addiere Zelle 020 zu Zelle 021 (Ergebnis in Zelle 021).',hint:'Solange Zelle 020 nicht 0 ist: Zelle 020 verringern, Zelle 021 erhöhen.',
+   tests:[[{20:3,21:4},{21:7}],[{20:0,21:5},{21:5}],[{20:6,21:0},{21:6}]],sol:P_BONSAI},
+  {title:'Bonsai: Auf 0 setzen',mode:'bonsai',text:'Setze Zelle 020 auf 0 – im Bonsai-Befehlssatz gibt es kein NULL.',hint:'Eine Schleife mit TST, DEC und JMP.',
+   tests:[[{20:5},{20:0}],[{20:0},{20:0}],[{20:13},{20:0}]],sol:`start: TST 20\nJMP weiter\nHLT\nweiter: DEC 20\nJMP start`}
+];
+let solved={};
+function renderTasks(){
+  $('#taskList').innerHTML=TASKS.map((t,i)=>`<details class="task" data-i="${i}"><summary><span class="num ${solved[i]?'ok':''}">${solved[i]?'✓':i+1}</span><b style="flex:1">${esc(t.title)}</b>${t.mode==='bonsai'?'<span class="tag bonsai">Bonsai</span>':'<span class="tag">Standard</span>'}</summary>
+    <div class="tb"><p style="margin-top:0">${esc(t.text)}</p>
+    <details><summary style="cursor:pointer;color:var(--muted);font-weight:600">💡 Tipp</summary><p>${esc(t.hint)}</p></details>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn primary small" data-check="${i}">▶ Prüfen</button></div>
+    <div class="res" id="res${i}"></div>
+    <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-weight:600">Musterlösung zeigen</summary><pre class="sol">${esc(t.sol)}</pre><button class="btn small" data-sol="${i}">In den Programmtext übernehmen</button></details></div></details>`).join('');
+  $$('#taskList [data-check]').forEach(b=>b.onclick=()=>checkTask(+b.dataset.check));
+  $$('#taskList [data-sol]').forEach(b=>b.onclick=async()=>{const t=TASKS[+b.dataset.sol];if(t.mode!==mode&&!(await setMode(t.mode)))return;$('#progText').value=t.sol;closeModal('mTasks');showTab('tabText');toast('Musterlösung im Programmtext – noch nicht im Speicher.');});
+}
+async function checkTask(i){
+  const t=TASKS[i],out=$('#res'+i);
+  if(t.mode!==mode){out.innerHTML=`<div class="warnbox">Diese Aufgabe gehört zum <b>${t.mode==='bonsai'?'Bonsai':'Standard'}</b>-Befehlssatz. <button class="btn small" id="sw${i}">Umschalten</button></div>`;
+    $('#sw'+i).onclick=async()=>{if(await setMode(t.mode))checkTask(i);};return;}
+  let rows='',all=true,note='';
+  for(const [inp,exp] of t.tests){
+    const x=new Machine();x.setMicrocode(m.mc,m.names);x.ram=m.ram.slice();
+    for(const a in exp)if(!(a in inp))x.ram[a]=0;for(const a in inp)x.ram[a]=inp[a];
+    const r=runProgram(x,200000);let ok=r.halted;
+    const got=Object.keys(exp).map(a=>a+': '+x.ram[a]).join(', ');
+    for(const a in exp)if(x.ram[a]!==exp[a])ok=false;
+    if(!r.halted)note=r.timeout?'Das Programm hält nicht an (Endlosschleife?). Fehlt ein HLT?':'Fehler: '+r.error;
+    all=all&&ok;
+    rows+=`<tr><td>${Object.entries(inp).map(([a,v])=>a+': '+v).join(', ')}</td><td>${Object.entries(exp).map(([a,v])=>a+': '+v).join(', ')}</td><td>${r.halted?got:'—'}</td><td class="${ok?'pass':'fail'}">${ok?'✓':'✗'}</td></tr>`;
+  }
+  const code=[20,21,22].some(a=>types[a]==='code');
+  if(!all&&code)note+=(note?' ':'')+'Achtung: Dein Programm reicht bis in die Zellen 020–022 – dort stehen aber die Eingaben. Schreibe Hilfswerte in höhere Zellen.';
+  out.innerHTML=`<div class="${all?'okline':'warnbox'}">${all?'✓ Alle Tests bestanden – stark!':'Noch nicht ganz. '+esc(note||'Vergleiche erwartetes und tatsächliches Ergebnis.')}</div><table><tr><th>Eingabe (Zelle: Wert)</th><th>erwartet</th><th>dein Ergebnis</th><th></th></tr>${rows}</table>`;
+  if(all){solved[i]=true;try{localStorage.setItem('vnw-solved',JSON.stringify(solved))}catch(e){}const n=$(`#taskList details[data-i="${i}"] .num`);n.classList.add('ok');n.textContent='✓';}
+}
+
+/* --- Mikrocode-Editor --- */
+let mcSel=1;
+function steps(k){return m.routine(k*10);}
+function setSteps(k,arr){for(let i=0;i<10;i++)m.mc[k*10+i]=arr[i]||0;mcChanged();}
+function mcChanged(){detectMode();afterMcChange(false);renderMcList();}
+function renderMcList(){let h='';for(let k=0;k<20;k++){const n=m.names[k],free=k>0&&!n;h+=`<button data-k="${k}" class="${k===mcSel?'on':''} ${free?'free':''}"><span class="n">${pad(k,2)}</span><span>${free?'— frei —':esc(n)}</span></button>`;}
+  $('#mcOpList').innerHTML=h;$$('#mcOpList button').forEach(b=>b.onclick=()=>{mcSel=+b.dataset.k;renderMcList();renderMcEditor();});}
+function renderMcEditor(){
+  const k=mcSel,st=steps(k),name=m.names[k]||'';
+  let h=`<div class="field"><label>${k===0?'Holphase (läuft vor jedem Befehl)':'Name des Befehls Nr. '+pad(k,2)}</label><input type="text" id="mcName" value="${esc(name)}" ${k===0?'disabled':''} placeholder="z. B. MUL" maxlength="8"></div>`;
+  h+=`<label style="font-size:12px;font-weight:700;color:var(--muted)">Mikroprogramm (Mikrocode-Adressen ${fmtAdr(k*10)}–${fmtAdr(k*10+9)})</label><div class="stepsed" style="margin-top:6px">`;
+  st.forEach((c,i)=>{h+=`<div class="srow"><span class="n">${fmtAdr(k*10+i)}</span><select data-i="${i}">${OP_ORDER.map(o=>`<option value="${o}" ${o===c?'selected':''}>${OPS[o].label} – ${OPS[o].short}</option>`).join('')}</select><button class="ibtn" data-up="${i}" title="nach oben">↑</button><button class="ibtn" data-dn="${i}" title="nach unten">↓</button><button class="ibtn" data-rm="${i}" title="entfernen">✕</button></div>`;});
+  h+=`</div><button class="btn small" id="mcAdd" ${st.length>=10?'disabled':''}>+ Mikroschritt</button>`;
+  const last=st[st.length-1];const w=[];
+  if(k===0&&last!==5)w.push('Die Holphase sollte mit <b>ins → mc</b> enden – sonst weiß das Steuerwerk nicht, welcher Befehl ausgeführt werden soll.');
+  if(k>0&&name&&last!==7)w.push('Ein Befehl sollte mit <b>mc := 0</b> enden – sonst wird danach kein neuer Befehl geholt.');
+  if(k>0&&name&&!st.includes(9)&&!st.includes(11)&&!st.includes(19))w.push('Kein <b>pc++</b> enthalten: Der Programmzähler bleibt stehen, derselbe Befehl würde immer wieder ausgeführt.');
+  if(k>0&&!name&&st.length)w.push('Dieser Befehl hat Mikrocode, aber keinen Namen – im Programm kann man ihn nicht verwenden.');
+  h+=w.map(x=>`<div class="warnbox">${x}</div>`).join('');
+  if(k>0&&name)h+=`<p class="infobox" style="margin-top:10px">Im Programm: <code class="mono">${esc(name)} 20</code> wird gespeichert als <b class="mono">${fmtVal(k*1000+20)}</b>.</p>`;
+  $('#mcEditor').innerHTML=h;
+  const ni=$('#mcName');if(ni)ni.onchange=()=>{const v=ni.value.trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9_]/g,'');
+    if(v&&m.names.some((n,j)=>j!==k&&n&&n.toUpperCase()===v)){toast('Diesen Namen gibt es schon.','bad');ni.value=name;return;}
+    while(m.names.length<=k)m.names.push('');m.names[k]=v;mcChanged();renderMcEditor();};
+  $$('#mcEditor select').forEach(s=>s.onchange=()=>{const a=steps(k);a[+s.dataset.i]=+s.value;setSteps(k,a);renderMcEditor();});
+  $$('#mcEditor [data-rm]').forEach(b=>b.onclick=()=>{const a=steps(k);a.splice(+b.dataset.rm,1);setSteps(k,a);renderMcEditor();});
+  $$('#mcEditor [data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up,a=steps(k);if(i>0){[a[i-1],a[i]]=[a[i],a[i-1]];setSteps(k,a);renderMcEditor();}});
+  $$('#mcEditor [data-dn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.dn,a=steps(k);if(i<a.length-1){[a[i+1],a[i]]=[a[i],a[i+1]];setSteps(k,a);renderMcEditor();}});
+  const ad=$('#mcAdd');if(ad)ad.onclick=()=>{const a=steps(k);if(a[a.length-1]===7)a.splice(a.length-1,0,2);else a.push(a.length?7:4);setSteps(k,a);renderMcEditor();};
+}
+function openCode(){renderMcList();renderMcEditor();openModal('mCode');}
+
+/* --- Dateien --- */
+let dlCap=null;try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{dlCap=d;}).catch(()=>{});}catch(e){}
+function openExport(title,name,text){$('#exTitle').textContent=title;$('#exText').value=text;openModal('mExport');
+  $('#exDownload').onclick=async()=>{
+    if(dlCap){const fn=/\.txt$/.test(name)?name:name+'.txt';
+      try{await dlCap.save({filename:fn,data:text});toast(fn===name?'Gespeichert ✓':'Gespeichert als „'+fn+'“ – für Johnny die Endung „.txt“ entfernen.','ok');}
+      catch(e){if(!e||e.code!=='declined')toast('Download hier nicht möglich – bitte „Kopieren“ nutzen.','bad');}
+      return;}
+    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800);}catch(e){toast('Download nicht möglich – bitte kopieren.','bad');}};
+  $('#exCopy').onclick=async()=>{try{await navigator.clipboard.writeText(text);toast('Kopiert ✓','ok');}catch(e){const t=$('#exText');t.select();try{document.execCommand('copy');toast('Kopiert ✓','ok');}catch(_){toast('Bitte markieren und mit Strg+C kopieren.');}}};
+}
+function readFile(input,cb){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{cb(String(r.result),f.name);input.value='';};r.readAsText(f);}
+
+/* --- Speichern im Browser --- */
+const LS='vnw-state-v1';let saveT;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(LS,JSON.stringify({ram:m.ram,types,mc:m.mc,names:m.names,text:$('#progText').value,speed}))}catch(e){}},400);}
+function restore(){try{const s=JSON.parse(localStorage.getItem(LS));if(!s||!s.ram)return false;
+  m.ram=s.ram.slice(0,RAM_SIZE).map(v=>+v||0);types=(s.types||[]).slice(0,RAM_SIZE);while(types.length<RAM_SIZE)types.push('');
+  if(s.mc&&s.names)m.setMicrocode(s.mc,s.names);$('#progText').value=s.text||'';if(s.speed!==undefined)speed=s.speed;
+  try{solved=JSON.parse(localStorage.getItem('vnw-solved'))||{}}catch(e){}return true;}catch(e){return false;}}
+
+/* ===== TOUR ===== */
+const W=(ev,task,test)=>({ev,task,test});
+const TOURS=[
+ {id:'intro',title:'Worum geht es? Simulator & Von-Neumann-Prinzip',d:'Für den allerersten Kontakt: Was ist ein Simulator, wozu dient er, und welche Ideen stecken in fast jedem Computer?',min:5,steps:[
+  {before:()=>{if(manual)setManual(false);},title:'Was steckt in einem Computer?',html:'<p>Smartphone, Laptop, Spielkonsole, Auto, Waschmaschine: In all diesen Geräten arbeitet ein <b>Prozessor</b>.</p><p>Erstaunlich: Ein Prozessor kann nur sehr <b>einfache</b> Dinge – eine Zahl holen, zwei Zahlen addieren, eine Zahl speichern. Das aber unvorstellbar schnell: <b>Milliarden Mal pro Sekunde</b>.</p><p>Wie kann so etwas Einfaches so viel Verschiedenes können? Genau das kann man hier herausfinden.</p>'},
+  {title:'Warum ein Simulator?',html:'<p>Einem echten Prozessor kann man nicht bei der Arbeit zusehen: Er ist winzig, besteht aus Milliarden Bauteilen und ist viel zu schnell.</p><p>Ein <b>Simulator</b> ist ein Programm, das einen Rechner <b>nachbildet</b>. Hier kannst du:</p><ul style="margin:0 0 6px;padding-left:18px"><li>den Rechner <b>anhalten</b> und in Zeitlupe laufen lassen,</li><li><b>hineinschauen</b>, wo welche Zahl gerade ist,</li><li>Schritte <b>zurückspulen</b>,</li><li>gefahrlos <b>ausprobieren</b> – kaputt gehen kann nichts.</li></ul>'},
+  {title:'Ein Modell – bewusst vereinfacht',html:'<p>Dieser Rechner ist ein <b>Modell</b>: Wie eine Landkarte zeigt er das Wesentliche und lässt Details weg.</p><p>Vereinfacht ist zum Beispiel:</p><ul style="margin:0 0 6px;padding-left:18px"><li>Er rechnet mit <b>Dezimalzahlen</b> – echte Computer mit 0 und 1.</li><li>Er hat nur <b>1000 Speicherzellen</b> und rund <b>10 Befehle</b>.</li><li>Tastatur und Bildschirm (Ein- und Ausgabe) fehlen.</li></ul><p>Das <b>Prinzip</b> aber ist dasselbe wie in jedem echten Prozessor.</p>'},
+  {title:'Der Bauplan von John von Neumann',html:'<p>1945 beschrieb der Mathematiker <b>John von Neumann</b> einen Bauplan für Computer. Fast alle Computer, die es heute gibt, folgen noch immer diesem Bauplan.</p><p>Man nennt ihn die <b>Von-Neumann-Architektur</b>. „Architektur“ heißt hier: aus welchen Teilen ein Computer besteht und wie sie zusammenarbeiten.</p>'},
+  {sel:'#cpu',title:'Die Bauteile',html:'<p>Ein Von-Neumann-Rechner besteht aus:</p><ul style="margin:0 0 6px;padding-left:18px"><li><b style="color:var(--ram)">Speicher</b> – merkt sich Zahlen</li><li><b style="color:var(--alu)">Rechenwerk</b> – rechnet</li><li><b style="color:var(--cu)">Steuerwerk</b> – liest die Befehle und gibt die Anweisungen</li><li><b>Busse</b> – die Leitungen dazwischen</li></ul><p>Dazu kommen Ein- und Ausgabegeräte, die hier weggelassen sind. Steuerwerk und Rechenwerk zusammen bilden den <b>Prozessor</b> (CPU).</p>'},
+  {sel:'#memPanel',title:'Idee 1: Ein Speicher für alles',html:'<p>Das <b>Programm</b> (die Befehle) und die <b>Daten</b> (die Zahlen, mit denen gerechnet wird) liegen im <b>selben Speicher</b> – beides sind einfach Zahlen.</p><p>Warum ist das so wichtig? Frühe Rechenmaschinen musste man für eine neue Aufgabe <b>umbauen oder neu verkabeln</b>. Beim Von-Neumann-Rechner lädt man einfach ein anderes Programm in den Speicher – und dieselbe Maschine kann etwas völlig anderes. Deshalb kann dein Smartphone telefonieren, spielen und navigieren.</p>'},
+  {sel:'#pc-box',title:'Idee 2: Ein Befehl nach dem anderen',html:'<p>Die Befehle werden <b>nacheinander</b> ausgeführt. Der <b>Programmzähler</b> merkt sich, wo der Rechner gerade im Programm ist – wie ein Finger, der beim Lesen die Zeile zeigt.</p><p>Mit <b>Sprungbefehlen</b> kann der Rechner zurückspringen (etwas wiederholen) oder Befehle überspringen (eine Entscheidung treffen).</p>'},
+  {sel:'#phaseCard',title:'Idee 3: Der immer gleiche Takt',html:'<p>Der Rechner tut immer wieder dasselbe:</p><p style="text-align:center;font-weight:700">① Befehl holen → ② Befehl ausführen → ① …</p><p>Das ist der <b>Von-Neumann-Zyklus</b>. Jeder Befehl besteht dabei aus noch kleineren <b>Mikroschritten</b>. Alles, was ein Computer kann, entsteht aus der stumpfen Wiederholung solcher einfachen Schritte.</p>'},
+  {sel:'#db-box',title:'Der Engpass',html:'<p>Befehle und Daten müssen sich denselben Weg teilen: Alles wandert einzeln über den <b>Bus</b>. Während ein Befehl geholt wird, kann keine Zahl transportiert werden.</p><p>Das nennt man den <b>Von-Neumann-Flaschenhals</b>. Echte Prozessoren haben deshalb zusätzliche schnelle Zwischenspeicher – das Prinzip bleibt aber gleich.</p>'},
+  {title:'Was du hier lernen kannst',html:'<ul style="margin:0 0 6px;padding-left:18px"><li>wie ein Computer <b>innen</b> einen Befehl verarbeitet,</li><li>warum er nicht „denkt“, sondern <b>stur Schritt für Schritt</b> ausführt, was im Speicher steht,</li><li>wie man selbst kleine <b>Programme</b> schreibt.</li></ul><p>Als Nächstes zeigt dir der <b>Rundgang</b>, wo was auf dem Bildschirm ist.</p>'}]},
+ {id:'ui',title:'Rundgang: Die Oberfläche',d:'Was ist wo? Speicher, Busse, Rechenwerk, Steuerwerk.',min:3,steps:[
+  {title:'Rundgang',html:'<p>In diesem Rundgang lernst du die Bereiche des Bildschirms kennen: Speicher, Busse, Rechenwerk, Steuerwerk und die Bedienknöpfe.</p><p>Neu beim Thema? Dann starte vorher das Kapitel <b>„Worum geht es?“</b>.</p>'},
+  {sel:'#memPanel',title:'Der Arbeitsspeicher',html:'<p>1000 Zellen (000 bis 999). Jede Zelle enthält eine Zahl wie <code>01.010</code>.</p><p>Im selben Speicher stehen <b>Befehle und Daten</b> – das ist die zentrale Idee von John von Neumann.</p><p>Die Spalte <i>Bedeutung</i> übersetzt die Zahl: <code>01.010</code> heißt <code>TAKE 010</code>.</p>'},
+  {sel:'#g-ram',title:'Speicher im Schaubild',html:'<p>Hier siehst du einen Ausschnitt des Speichers. Lila umrandet ist die Zelle, deren Adresse gerade auf dem <b>Adressbus</b> liegt.</p>'},
+  {sel:'#db-box',title:'Die Busse',html:'<p>Busse sind die Leitungen zwischen den Bauteilen.</p><p>Der <b>Adressbus</b> (oben) sagt dem Speicher, <i>welche</i> Zelle gemeint ist. Über den <b>Datenbus</b> (Mitte) wandern die <i>Werte</i>.</p>'},
+  {sel:'#g-alu',title:'Das Rechenwerk',html:'<p>Der <b>Akkumulator</b> (kurz Akku) speichert das Zwischenergebnis. Das Rechenwerk kann addieren, subtrahieren, um 1 erhöhen oder verringern und auf 0 setzen.</p><p>Die Lampe leuchtet, wenn der Akku 0 ist.</p>'},
+  {sel:'#g-cu',title:'Das Steuerwerk',html:'<p>Das Steuerwerk ist der Chef:</p><p>Der <b>Programmzähler</b> zeigt auf den nächsten Befehl. Das <b>Befehlsregister</b> hält den aktuellen Befehl. Der <b>Mikrocode-Zähler</b> zählt die kleinen Arbeitsschritte eines Befehls.</p>'},
+  {sel:'#op2',title:'Mikroschritte',html:'<p>Die runden Knöpfe auf den Leitungen sind die <b>Mikroschritte</b>, z. B. <code>ram → db</code>: „Inhalt der Speicherzelle auf den Datenbus“.</p><p>Der gerade ausgeführte leuchtet lila, der nächste ist gestrichelt umrandet. Klick auf einen Knopf zeigt rechts eine Erklärung.</p>'},
+  {sel:'#controls',title:'Die Steuerleiste',html:'<p><b>Mikroschritt</b>: ein winziger Schritt. <b>Befehl</b>: ein ganzer Befehl. <b>Start</b>: Das Programm läuft allein, das Tempo ist regelbar. <b>Zurück</b> macht Schritte rückgängig.</p><p><b>Handbetrieb</b>: Du selbst bist das Steuerwerk.</p>'},
+  {sel:'#infoPanel',title:'Was passiert gerade?',html:'<p>Hier steht immer in Worten, was los ist: in welcher <b>Phase</b> der Rechner ist, welche <b>Mikroschritte</b> zum aktuellen Befehl gehören und was der letzte Schritt bewirkt hat.</p>'},
+  {sel:'#btnTour',title:'Wie geht es weiter?',html:'<p>Oben findest du <b>Beispiele</b>, <b>Aufgaben</b> mit automatischer Prüfung, den <b>Befehlssatz</b> (Mikrocode ansehen und ändern) und die weiteren Kapitel dieser Tour.</p><p>Empfehlung: als Nächstes <b>„Von Hand rechnen“</b>.</p>'}]},
+ {id:'hand',title:'Von Hand rechnen (Handbetrieb)',d:'Du spielst selbst das Steuerwerk und rechnest 5 + 7. Ersetzt den Speicherinhalt.',min:5,steps:[
+  {title:'Du bist das Steuerwerk',before:async()=>{if(manual)setManual(false);await setMode('standard',true);m.ram.fill(0);types.fill('');m.ram[10]=5;m.ram[11]=7;types[10]=types[11]='data';doReset();showTab('tabRam');scrollRow(10);},
+   html:'<p>Ziel: <b>5 + 7</b> berechnen. Die 5 steht in Zelle 010, die 7 in Zelle 011. Das Ergebnis soll in Zelle 012.</p><p>Normalerweise erledigt das Steuerwerk alles automatisch. Jetzt übernimmst <b>du</b> diese Rolle und löst die Mikroschritte selbst aus.</p>'},
+  {sel:'#manualToggle',title:'Handbetrieb einschalten',html:'<p>Mit diesem Schalter wird das Steuerwerk „abgeklemmt“. Die Knöpfe im Schaubild werden gelb – dann kannst du sie anklicken.</p>',wait:W('manual-on','Schalte den Handbetrieb ein.')},
+  {sel:'#ab-box',title:'Welche Zelle?',html:'<p>Zuerst muss der Speicher wissen, <b>welche Zelle</b> gemeint ist. Das sagt ihm der Adressbus.</p>',wait:W('ab-set','Klicke auf den Adressbus und trage 10 ein.',v=>v===10)},
+  {sel:'#op2',title:'Zelle lesen',html:'<p>Jetzt liest der Speicher Zelle 010 und legt ihren Inhalt auf den Datenbus.</p>',wait:W('op','Klicke auf ram → db.',o=>o===2)},
+  {sel:'#op18',title:'Ab in den Akku',html:'<p>Der Wert auf dem Datenbus soll in den Akku.</p>',wait:W('op','Klicke auf db → acc.',o=>o===18)},
+  {sel:'#ab-box',title:'Die zweite Zahl',html:'<p>Die 7 steht in Zelle 011.</p>',wait:W('ab-set','Setze den Adressbus auf 11.',v=>v===11)},
+  {sel:'#op2',title:'Zelle lesen',html:'<p>Wieder: Zelle lesen und auf den Datenbus legen.</p>',wait:W('op','Klicke auf ram → db.',o=>o===2)},
+  {sel:'#op13',title:'Rechnen!',html:'<p><code>plus</code> addiert den Wert vom Datenbus zum Akku.</p>',wait:W('op','Klicke auf plus.',o=>o===13)},
+  {sel:'#ab-box',title:'Wohin mit dem Ergebnis?',html:'<p>Das Ergebnis soll in Zelle 012.</p>',wait:W('ab-set','Setze den Adressbus auf 12.',v=>v===12)},
+  {sel:'#op15',title:'Akku auf den Bus',html:'<p>Der Akku legt sein Ergebnis auf den Datenbus.</p>',wait:W('op','Klicke auf acc → db.',o=>o===15)},
+  {sel:'#op1',title:'Speichern',html:'<p>Zum Schluss schreibt der Speicher den Wert vom Datenbus in die Zelle.</p>',wait:W('op','Klicke auf db → ram.',o=>o===1&&m.ram[12]===12)},
+  {sel:'#memPanel',before:()=>scrollRow(12),title:'Geschafft! 🎉',html:'<p>In Zelle 012 steht jetzt <b>12</b>.</p><p>Du hast 8 Mikroschritte ausgelöst. Im Programm heißt das kurz: <code>TAKE 10</code>, <code>ADD 11</code>, <code>SAVE 12</code>. Jeder Befehl ist ein kleines <b>Mikroprogramm</b> – und genau das spielt das Steuerwerk automatisch ab.</p>'},
+  {sel:'#manualToggle',title:'Zurück zum Automatikbetrieb',html:'<p>Schalte den Handbetrieb wieder aus. Weiter geht es mit dem Kapitel <b>„Das erste Programm“</b>.</p>',wait:W('manual-off','Schalte den Handbetrieb aus.')}]},
+ {id:'prog',title:'Das erste Programm',d:'Ein Programm Befehl für Befehl ausführen. Ersetzt den Speicherinhalt.',min:4,steps:[
+  {sel:'#memPanel',before:async()=>{if(manual)setManual(false);await loadExample('add',true);showTab('tabRam');},title:'Ein Programm im Speicher',html:'<p>Geladen ist das Beispiel <b>Addition</b>: Die Zellen 000–003 enthalten <b>Befehle</b>, die Zellen 010 und 011 <b>Daten</b> (5 und 7).</p><p>Ein Befehl hat zwei Teile: <code>01.010</code> = Befehl <b>01</b> (TAKE) mit Adresse <b>010</b>.</p>'},
+  {sel:'#pc-box',title:'Der Programmzähler',html:'<p>Der Programmzähler steht auf <b>000</b>: Dort beginnt das Programm. In der Speichertabelle ist diese Zeile grün markiert (▶).</p>'},
+  {sel:'#btnMacro',title:'Einen Befehl ausführen',html:'<p>„Befehl“ führt einen kompletten Befehl aus.</p>',wait:W('macro','Klicke auf „Befehl“.')},
+  {sel:'#infoPanel',title:'Was ist passiert?',html:'<p>Rechts steht, was <code>TAKE 010</code> getan hat: Die 5 aus Zelle 010 ist jetzt im Akku.</p><p>Der Programmzähler zeigt auf <b>001</b> – den nächsten Befehl.</p>'},
+  {sel:'#btnMacro',title:'Weiter geht’s',html:'<p>Beobachte dabei den Akku und Zelle 012.</p>',wait:W('macro','Führe noch zwei Befehle aus (ADD und SAVE).',()=>m.pc>=3)},
+  {sel:'#memPanel',before:()=>scrollRow(12),title:'Das Ergebnis',html:'<p>In Zelle 012 steht jetzt <b>12</b> – das Ergebnis von 5 + 7. Als Nächstes käme <code>HLT</code>: Das Programm hält an.</p>'},
+  {sel:'#btnUndo',title:'Rückgängig',html:'<p>Etwas verpasst? Mit <b>Zurück</b> geht es Schritt für Schritt rückwärts – auch die 12 in Zelle 012 verschwindet wieder.</p>',wait:W('undo','Klicke auf „Zurück“.')},
+  {sel:'#btnRun',title:'Automatisch laufen lassen',html:'<p>Mit <b>Start</b> läuft das Programm von allein. Das <b>Tempo</b> kannst du auch während des Laufs verstellen.</p>',wait:W('halted','Klicke auf „Start“ und warte, bis das Programm anhält.')},
+  {title:'Gut gemacht!',html:'<p>Der Ablauf ist immer gleich: <b>Befehl holen → ausführen → nächster Befehl</b>.</p><p>Wie das <i>innen</i> funktioniert, zeigt das Kapitel <b>„Der Befehlszyklus“</b>.</p>'}]},
+ {id:'cycle',title:'Der Befehlszyklus (Mikrocode)',d:'Holphase und Ausführungsphase in Mikroschritten. Ersetzt den Speicherinhalt.',min:5,steps:[
+  {before:async()=>{if(manual)setManual(false);await loadExample('add',true);},title:'Holen und Ausführen',html:'<p>Jeder Befehl läuft in zwei Phasen ab:</p><p><b>① Holphase:</b> Der Befehl wird aus dem Speicher ins Befehlsregister geholt.<br><b>② Ausführungsphase:</b> Das Steuerwerk spielt das Mikroprogramm des Befehls ab.</p><p>Danach beginnt alles von vorn – der <b>Von-Neumann-Zyklus</b>.</p>'},
+  {sel:'#microCard',title:'Die Mikroschritte',html:'<p>Hier stehen die Mikroschritte der Holphase. Der nächste ist lila markiert: <code>pc → ab</code>.</p>'},
+  {sel:'#btnMicro',title:'Die Holphase',html:'<p>Sie hat immer dieselben 4 Schritte:</p><ol style="margin:0 0 6px;padding-left:18px"><li><code>pc → ab</code> Adresse des Befehls auf den Adressbus</li><li><code>ram → db</code> Befehl aus dem Speicher lesen</li><li><code>db → ins</code> ab ins Befehlsregister</li><li><code>ins → mc</code> Befehlsnummer an den Mikrocode-Zähler</li></ol>',wait:W('op','Klicke 4-mal auf „Mikroschritt“ und lies jeweils rechts unter „Gerade passiert“ mit.',()=>m.mcc>=10)},
+  {sel:'#mc-box',title:'Der Trick mit dem Mikrocode',html:'<p>Befehl Nr. 01 (TAKE) steht im Mikrocode ab Adresse <b>010</b>, Befehl 02 (ADD) ab 020 und so weiter.</p><p>Deshalb springt der Mikrocode-Zähler jetzt auf 010: Ab hier läuft das Mikroprogramm von TAKE.</p>'},
+  {sel:'#btnMicro',title:'TAKE ausführen',html:'<p>TAKE besteht aus: Adressteil auf den Adressbus, Zelle lesen, Wert in den Akku, Programmzähler erhöhen, Mikrocode-Zähler auf 0.</p>',wait:W('op','Führe die Mikroschritte aus, bis TAKE fertig ist.',()=>m.mcc===0)},
+  {sel:'#btnCode',title:'Mikrocode ansehen und ändern',html:'<p>Unter <b>Befehlssatz</b> findest du die Mikroprogramme aller Befehle. Du kannst sie ändern oder neue Befehle erfinden – zum Beispiel einen Befehl, der den Akku verdoppelt.</p>'},
+  {sel:'#modeSeg',title:'Bonsai-Modus',html:'<p>Der <b>Bonsai</b>-Befehlssatz hat nur 5 Befehle: INC, DEC, JMP, TST, HLT.</p><p>Erstaunlich: Damit lässt sich trotzdem alles berechnen, was ein Computer berechnen kann. Ideal für einen Einstieg mit wenigen Befehlen.</p>'}]},
+ {id:'code',title:'Selbst programmieren',d:'Programmtext schreiben, übersetzen, laufen lassen, Aufgaben lösen. Ersetzt den Speicherinhalt.',min:4,steps:[
+  {sel:'#tabBtnText',before:async()=>{if(manual)setManual(false);await setMode('standard',true);},title:'Programmtext',html:'<p>Programme lassen sich als Text viel bequemer schreiben als Zelle für Zelle.</p>',wait:W('tab-text','Öffne den Reiter „Programmtext“.')},
+  {sel:'#progText',before:()=>{showTab('tabText');$('#progText').value='; Mein erstes Programm: Zelle 20 verdoppeln\nTAKE 20\nADD 20\nSAVE 21\nHLT\n\n20: 8';$('#asmMsg').innerHTML='';},title:'So sieht ein Programm aus',html:'<p>Jede Zeile ist eine Speicherzelle, beginnend bei 000. <code>20: 8</code> heißt: In Zelle 020 steht die Zahl 8. Alles nach <code>;</code> ist Kommentar.</p><p>Ändere ruhig etwas, z. B. die 8.</p>'},
+  {sel:'#btnAssemble',before:()=>showTab('tabText'),title:'In den Speicher schreiben',html:'<p>Das Programm wird übersetzt und in den Speicher geschrieben. Tippfehler werden mit Zeilennummer angezeigt.</p>',wait:W('assembled','Klicke auf „In den Speicher schreiben“.')},
+  {sel:'#btnRun',title:'Ausprobieren',html:'<p>Lass das Programm laufen. Danach steht in Zelle 021 das Doppelte.</p>',wait:W('halted','Starte das Programm und warte, bis es anhält.')},
+  {sel:'#tabBtnRam',title:'Zellen direkt bearbeiten',html:'<p>Im Reiter <b>Speicherzellen</b> klickst du eine Zelle an und wählst oben Befehl und Adresse. Mit <b>Enter</b> geht es direkt zur nächsten Zelle.</p>'},
+  {sel:'#btnTasks',title:'Aufgaben',html:'<p>Unter <b>Aufgaben</b> warten Programmieraufträge – vom Addieren bis zur Multiplikation mit Schleife. Dein Programm wird automatisch mit verschiedenen Zahlen getestet.</p><p>Viel Spaß! 🎉</p>'}]}
+];
+let tour=null,tourIv=null;
+function renderTourMenu(){$('#tourList').innerHTML=TOURS.map((t,i)=>`<div class="item" data-t="${t.id}"><div class="k">${i+1}</div><div class="grow"><div class="t">${esc(t.title)}</div><div class="d">${esc(t.d)}</div></div><span class="tag">ca. ${t.min} Min.</span></div>`).join('');
+  $$('#tourList .item').forEach(e=>e.onclick=()=>startTour(e.dataset.t));}
+function startTour(id){closeAllModals();stopRun();tour={t:TOURS.find(x=>x.id===id),i:0,done:false};tourShow();clearInterval(tourIv);tourIv=setInterval(tourPlace,350);}
+function endTour(){tour=null;clearInterval(tourIv);$('#tourSpot').style.display='none';$('#tourCard').style.display='none';}
+async function tourShow(){
+  const st=tour.t.steps[tour.i];tour.done=!st.wait;
+  if(st.before){try{await st.before();}catch(e){console.error(e)}}
+  tourCard();const el=st.sel&&$(st.sel);if(el&&el.scrollIntoView)el.scrollIntoView({block:'nearest',inline:'nearest'});setTimeout(tourPlace,60);
+}
+function tourCard(){
+  const t=tour.t,st=t.steps[tour.i],n=t.steps.length,last=tour.i===n-1,c=$('#tourCard');
+  c.innerHTML=`<div class="tc-top"><span>${esc(t.title)}</span><button class="xbtn" id="tcX" title="Tour beenden">×</button></div><div class="progress"><i style="width:${(tour.i+1)/n*100}%"></i></div>
+   <h3>${esc(st.title)}</h3><div class="tc-body">${st.html}</div>${st.wait?`<div class="task-line ${tour.done?'done':''}">${tour.done?'✓ Geschafft!':'👉 '+esc(st.wait.task)}</div>`:''}
+   <div class="tc-foot"><span class="sp">${tour.i+1} / ${n}</span>${tour.i>0?'<button class="btn small ghost" id="tcBack">Zurück</button>':''}<button class="btn small ${st.wait&&!tour.done?'':'primary'}" id="tcNext">${st.wait&&!tour.done?'Überspringen':last?'Fertig ✓':'Weiter →'}</button></div>`;
+  c.style.display='block';
+  $('#tcX').onclick=endTour;if($('#tcBack'))$('#tcBack').onclick=()=>{tour.i--;tourShow();};
+  $('#tcNext').onclick=()=>{if(last){const id=tour.t.id;endTour();const nx=TOURS[TOURS.findIndex(x=>x.id===id)+1];toast(nx?'Nächstes Kapitel: „'+nx.title+'“ (über 🎓 Tour)':'Tour beendet – viel Spaß!','ok');return;}tour.i++;tourShow();};
+}
+function tourHook(ev,p){
+  if(!tour||tour.done)return;const st=tour.t.steps[tour.i];if(!st.wait||st.wait.ev!==ev)return;
+  if(st.wait.test&&!st.wait.test(p))return;
+  tour.done=true;tourCard();tourPlace();const i=tour.i,t=tour.t;
+  setTimeout(()=>{if(tour&&tour.t===t&&tour.i===i){tour.i++;if(tour.i<t.steps.length)tourShow();else endTour();}},1100);
+}
+function tourPlace(){
+  if(!tour)return;const st=tour.t.steps[tour.i],spot=$('#tourSpot'),c=$('#tourCard'),vw=innerWidth,vh=innerHeight,cw=c.offsetWidth,ch=c.offsetHeight,g=16;
+  const el=st.sel&&$(st.sel);spot.style.display='block';
+  if(!el){spot.classList.add('center');spot.style.left=vw/2+'px';spot.style.top=vh/2+'px';c.style.left=(vw-cw)/2+'px';c.style.top=Math.max(12,(vh-ch)/2)+'px';return;}
+  spot.classList.remove('center');const r=el.getBoundingClientRect(),p=6;
+  Object.assign(spot.style,{left:r.left-p+'px',top:r.top-p+'px',width:r.width+2*p+'px',height:r.height+2*p+'px'});
+  const clampY=y=>Math.max(10,Math.min(vh-ch-10,y)),clampX=x=>Math.max(10,Math.min(vw-cw-10,x));
+  const cands=[[r.right+g,clampY(r.top),r.right+g+cw<=vw-8],[r.left-g-cw,clampY(r.top),r.left-g-cw>=8],[clampX(r.left),r.bottom+g,r.bottom+g+ch<=vh-8],[clampX(r.left),r.top-g-ch,r.top-g-ch>=8]];
+  const ok=cands.find(x=>x[2]);let x,y;if(ok){x=ok[0];y=ok[1];}else{x=vw-cw-14;y=vh-ch-14;}
+  c.style.left=x+'px';c.style.top=y+'px';
+}
+
+/* ===== Start ===== */
+function init(){
+  buildSvg();buildRamTable();
+  const had=restore();detectMode();fillCmdSelect();updModeUI();
+  $('#speed').value=speed;$('#speedLbl').textContent=SPEEDS[speed].l;
+  if(!had){const ex=EXAMPLES[0];$('#progText').value=ex.text;loadText(ex.text);$('#asmMsg').innerHTML='';}
+  renderRam(true,true);selectCell(0);render(true);renderExamples();renderTasks();renderTourMenu();
+  // Ereignisse
+  $('#btnMicro').onclick=microClick;$('#btnMacro').onclick=macroClick;$('#btnRun').onclick=toggleRun;$('#btnUndo').onclick=doUndo;$('#btnReset').onclick=doReset;
+  $('#speed').oninput=e=>{speed=+e.target.value;$('#speedLbl').textContent=SPEEDS[speed].l;save();};
+  $('#manual').onchange=e=>setManual(e.target.checked);
+  $('#ab-box').onclick=()=>openValPop('ab');$('#db-box').onclick=()=>openValPop('db');
+  $('#vpOk').onclick=applyValPop;$('#vpIn').onkeydown=e=>{if(e.key==='Enter')applyValPop();if(e.key==='Escape')$('#valPop').classList.remove('on');};
+  document.addEventListener('mousedown',e=>{if(!e.target.closest('#valPop,#ab-box,#db-box'))$('#valPop').classList.remove('on');});
+  $('#edCmd').onchange=()=>{updEdHint();$('#edArg').focus();};
+  $('#edArg').oninput=updEdHint;
+  $('#edCmd').onkeydown=$('#edArg').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();applyEd(true);}if(e.key==='ArrowDown'&&e.target.id==='edArg'){e.preventDefault();selectCell(selCell+1,false);$('#edArg').focus();}if(e.key==='ArrowUp'&&e.target.id==='edArg'){e.preventDefault();selectCell(selCell-1,false);$('#edArg').focus();}};
+  $('#edOk').onclick=()=>applyEd(true);
+  $('#btnClearRam').onclick=async()=>{if(await confirmBox('Speicher leeren?','Alle 1000 Zellen werden auf 0 gesetzt.','Leeren')){m.ram.fill(0);types.fill('');doReset();selectCell(0);}};
+  $$('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  $('#btnAssemble').onclick=assembleClick;$('#btnDisasm').onclick=()=>{$('#progText').value=disassemble(m,types);$('#asmMsg').innerHTML='<div class="okline">Speicherinhalt als Text übernommen.</div>';save();};
+  $('#progText').oninput=save;
+  $('#progText').onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();const t=e.target,s=t.selectionStart;t.value=t.value.slice(0,s)+'\t'+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=s+1;}if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();assembleClick();}};
+  $$('#modeSeg button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+  $('#btnExamples').onclick=()=>openModal('mExamples');$('#btnTasks').onclick=()=>openModal('mTasks');$('#btnCode').onclick=openCode;$('#btnFile').onclick=()=>openModal('mFile');$('#btnTour').onclick=()=>openModal('mTour');
+  $$('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal-bg').classList.remove('on'));
+  $$('.modal-bg').forEach(bg=>bg.addEventListener('mousedown',e=>{if(e.target===bg&&bg.id!=='mConfirm')bg.classList.remove('on');}));
+  $('#mcStd').onclick=async()=>{if(await setMode('standard',mode!=='custom')||mode==='standard'){renderMcList();renderMcEditor();}};
+  $('#mcBonsai').onclick=async()=>{if(await setMode('bonsai',mode!=='custom')||mode==='bonsai'){mcSel=Math.min(mcSel,5);renderMcList();renderMcEditor();}};
+  $('#mcExport').onclick=()=>{const names=[];for(let i=0;i<m.names.length;i++)names.push(m.names[i]||'');openExport('Mikrocode exportieren','mikrocode.mc',m.mc.concat(names).join('\r\n'));};
+  $('#mcImport').onchange=e=>readFile(e.target,txt=>{const l=txt.split(/\r?\n/);if(l.length<201){toast('Das sieht nicht nach einer .mc-Datei aus.','bad');return;}
+    const mc=l.slice(0,200).map(v=>parseInt(v)||0);const names=l.slice(200).map(s=>s.trim());while(names.length&&!names[names.length-1])names.pop();
+    m.setMicrocode(mc,names);detectMode();afterMcChange(true);renderMcList();renderMcEditor();toast('Mikrocode geladen ✓','ok');});
+  $('#ramImport').onchange=e=>readFile(e.target,(txt,name)=>{const l=txt.split(/\r?\n/).filter((s,i,a)=>i<RAM_SIZE);
+    if(!l.length||l.some(s=>s.trim()!==''&&!/^\d+$/.test(s.trim()))){toast('Das sieht nicht nach einer .ram-Datei aus.','bad');return;}
+    m.ram.fill(0);types.fill('');l.forEach((s,i)=>{m.ram[i]=Math.min(MAX_VAL,parseInt(s)||0);});doReset();selectCell(0);closeModal('mFile');toast('„'+name+'“ geladen ✓','ok');});
+  $('#ramExport').onclick=()=>{closeModal('mFile');openExport('Programm als .ram-Datei','programm.ram',m.ram.join('\r\n'));};
+  $('#txtExport').onclick=()=>{closeModal('mFile');openExport('Programm als Text','programm.txt',disassemble(m,types));};
+  $('#wcTour').onclick=()=>{closeModal('mWelcome');startTour('intro');};$('#wcGo').onclick=()=>closeModal('mWelcome');
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){if($('.modal-bg.on')&&!$('#mConfirm.on')){closeAllModals();return;}if(tour){endTour();return;}}
+    if(e.target.closest('input,textarea,select')||$('.modal-bg.on'))return;
+    if(e.key==='ArrowRight'){e.preventDefault();e.shiftKey?macroClick():microClick();}
+    else if(e.key===' '){e.preventDefault();toggleRun();}
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();doUndo();}
+  });
+  window.addEventListener('resize',tourPlace);
+  let first=true;try{first=!localStorage.getItem('vnw-welcome');localStorage.setItem('vnw-welcome','1');}catch(e){}
+  if(first)openModal('mWelcome');
+}
+init();
+
+</script>
+</body>
+</html>
