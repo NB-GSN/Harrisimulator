@@ -2,7 +2,7 @@
 
 Ein Lernsimulator für einen einfachen **Von-Neumann-Rechner** – gedacht für den Informatikunterricht und für Lehrkräftefortbildungen (z. B. Zertifikatskurs Informatik Sek I).
 
-**Direkt im Browser starten:** https://nb-gsn.github.io/harrisimulator/
+**Direkt im Browser starten:** https://nb-gsn.github.io/Harrisimulator/
 
 ## Was kann der HarriSimulator?
 
