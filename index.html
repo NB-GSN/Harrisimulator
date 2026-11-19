@@ -1161,20 +1161,20 @@ function renderExamples(){$('#exList').innerHTML=EXAMPLES.map(e=>`<div class="it
 
 /* --- Aufgaben --- */
 const TASKS=[
-  {title:'Summe',mode:'standard',text:'Addiere die Zahlen in Zelle 020 und 021. Das Ergebnis soll in Zelle 022 stehen. Das Programm endet mit HLT.',hint:'Du brauchst TAKE, ADD, SAVE und HLT.',
-   tests:[[{20:3,21:4},{22:7}],[{20:0,21:9},{22:9}],[{20:120,21:35},{22:155}]],sol:`TAKE 20\nADD 21\nSAVE 22\nHLT`},
-  {title:'Verdreifachen',mode:'standard',text:'Berechne das Dreifache der Zahl in Zelle 020 und speichere es in Zelle 021.',hint:'Es gibt keinen Multiplikationsbefehl – aber du kannst mehrfach addieren.',
-   tests:[[{20:2},{21:6}],[{20:0},{21:0}],[{20:111},{21:333}]],sol:`TAKE 20\nADD 20\nADD 20\nSAVE 21\nHLT`},
-  {title:'Tauschen',mode:'standard',text:'Vertausche die Inhalte der Zellen 020 und 021.',hint:'Du brauchst eine dritte Zelle als Zwischenspeicher, z. B. Zelle 030.',
-   tests:[[{20:3,21:8},{20:8,21:3}],[{20:0,21:5},{20:5,21:0}],[{20:42,21:42},{20:42,21:42}]],sol:`TAKE 20\nSAVE 30\nTAKE 21\nSAVE 20\nTAKE 30\nSAVE 21\nHLT`},
-  {title:'Multiplizieren',mode:'standard',text:'Berechne Zelle 020 · Zelle 021 und speichere das Ergebnis in Zelle 022.',hint:'Wiederholte Addition: Solange Zelle 021 nicht 0 ist, addiere Zelle 020 zum Ergebnis und verringere Zelle 021 um 1. TST überspringt den nächsten Befehl, wenn die Zelle 0 ist.',
+  {title:'Summe',mode:'standard',text:'Addiere die Zahlen in Zelle 010 und 011. Das Ergebnis soll in Zelle 012 stehen. Das Programm endet mit HLT.',hint:'Du brauchst TAKE, ADD, SAVE und HLT – wie im Beispiel „Addition“.',
+   tests:[[{10:3,11:4},{12:7}],[{10:0,11:9},{12:9}],[{10:120,11:35},{12:155}]],sol:`TAKE 10\nADD 11\nSAVE 12\nHLT`},
+  {title:'Verdreifachen',mode:'standard',text:'Berechne das Dreifache der Zahl in Zelle 010 und speichere es in Zelle 011.',hint:'Es gibt keinen Multiplikationsbefehl – aber du kannst mehrfach addieren.',
+   tests:[[{10:2},{11:6}],[{10:0},{11:0}],[{10:111},{11:333}]],sol:`TAKE 10\nADD 10\nADD 10\nSAVE 11\nHLT`},
+  {title:'Tauschen',mode:'standard',text:'Vertausche die Inhalte der Zellen 010 und 011.',hint:'Du brauchst eine dritte Zelle als Zwischenspeicher, z. B. Zelle 015.',
+   tests:[[{10:3,11:8},{10:8,11:3}],[{10:0,11:5},{10:5,11:0}],[{10:42,11:42},{10:42,11:42}]],sol:`TAKE 10\nSAVE 15\nTAKE 11\nSAVE 10\nTAKE 15\nSAVE 11\nHLT`},
+  {title:'Multiplizieren',mode:'standard',text:'Berechne Zelle 020 · Zelle 021 und speichere das Ergebnis in Zelle 022. (Die Zahlen stehen diesmal ab Zelle 020, damit dein Programm mit der Schleife in den Zellen 000–019 genug Platz hat.)',hint:'Wiederholte Addition: Solange Zelle 021 nicht 0 ist, addiere Zelle 020 zum Ergebnis und verringere Zelle 021 um 1. TST überspringt den nächsten Befehl, wenn die Zelle 0 ist.',
    tests:[[{20:3,21:4},{22:12}],[{20:0,21:5},{22:0}],[{20:6,21:0},{22:0}],[{20:7,21:7},{22:49}]],sol:P_MUL},
-  {title:'Größere Zahl',mode:'standard',text:'Schreibe die größere der beiden Zahlen aus Zelle 020 und 021 in Zelle 022.',hint:'SUB rechnet nie unter 0. Ist 020 − 021 = 0, dann ist Zelle 021 mindestens so groß wie Zelle 020.',
+  {title:'Größere Zahl',mode:'standard',text:'Schreibe die größere der beiden Zahlen aus Zelle 020 und 021 in Zelle 022. (Auch hier stehen die Zahlen ab Zelle 020, damit dein Programm genug Platz hat.)',hint:'SUB rechnet nie unter 0. Ist 020 − 021 = 0, dann ist Zelle 021 mindestens so groß wie Zelle 020.',
    tests:[[{20:3,21:4},{22:4}],[{20:9,21:2},{22:9}],[{20:5,21:5},{22:5}],[{20:0,21:0},{22:0}]],sol:P_MAX},
-  {title:'Bonsai: Addieren',mode:'bonsai',text:'Nur mit INC, DEC, JMP, TST und HLT: Addiere Zelle 020 zu Zelle 021 (Ergebnis in Zelle 021).',hint:'Solange Zelle 020 nicht 0 ist: Zelle 020 verringern, Zelle 021 erhöhen.',
-   tests:[[{20:3,21:4},{21:7}],[{20:0,21:5},{21:5}],[{20:6,21:0},{21:6}]],sol:P_BONSAI},
-  {title:'Bonsai: Auf 0 setzen',mode:'bonsai',text:'Setze Zelle 020 auf 0 – im Bonsai-Befehlssatz gibt es kein NULL.',hint:'Eine Schleife mit TST, DEC und JMP.',
-   tests:[[{20:5},{20:0}],[{20:0},{20:0}],[{20:13},{20:0}]],sol:`start: TST 20\nJMP weiter\nHLT\nweiter: DEC 20\nJMP start`}
+  {title:'Bonsai: Addieren',mode:'bonsai',text:'Nur mit INC, DEC, JMP, TST und HLT: Addiere Zelle 010 zu Zelle 011 (Ergebnis in Zelle 011).',hint:'Solange Zelle 010 nicht 0 ist: Zelle 010 verringern, Zelle 011 erhöhen.',
+   tests:[[{10:3,11:4},{11:7}],[{10:0,11:5},{11:5}],[{10:6,11:0},{11:6}]],sol:`start: TST 10   ; Zelle 10 leer? Dann fertig\nJMP weiter\nHLT\nweiter: DEC 10\nINC 11\nJMP start`},
+  {title:'Bonsai: Auf 0 setzen',mode:'bonsai',text:'Setze Zelle 010 auf 0 – im Bonsai-Befehlssatz gibt es kein NULL.',hint:'Eine Schleife mit TST, DEC und JMP.',
+   tests:[[{10:5},{10:0}],[{10:0},{10:0}],[{10:13},{10:0}]],sol:`start: TST 10\nJMP weiter\nHLT\nweiter: DEC 10\nJMP start`}
 ];
 let solved={};
 function renderTasks(){
@@ -1202,8 +1202,9 @@ async function checkTask(i){
     all=all&&ok;
     rows+=`<tr><td>${Object.entries(inp).map(([a,v])=>a+': '+v).join(', ')}</td><td>${Object.entries(exp).map(([a,v])=>a+': '+v).join(', ')}</td><td>${r.halted?got:'—'}</td><td class="${ok?'pass':'fail'}">${ok?'✓':'✗'}</td></tr>`;
   }
-  const code=[20,21,22].some(a=>types[a]==='code');
-  if(!all&&code)note+=(note?' ':'')+'Achtung: Dein Programm reicht bis in die Zellen 020–022 – dort stehen aber die Eingaben. Schreibe Hilfswerte in höhere Zellen.';
+  const dataCells=[...new Set(t.tests.flatMap(([i,e])=>[...Object.keys(i),...Object.keys(e)].map(Number)))].sort((x,y)=>x-y);
+  const hit=dataCells.filter(c=>types[c]==='code');
+  if(!all&&hit.length)note+=(note?' ':'')+'Achtung: Dein Programm reicht bis in Zelle '+hit.map(fmtAdr).join(', ')+' – dort stehen aber die Zahlen der Aufgabe und überschreiben deine Befehle. Das Programm muss vorher enden.';
   out.innerHTML=`<div class="${all?'okline':'warnbox'}">${all?'✓ Alle Tests bestanden – stark!':'Noch nicht ganz. '+esc(note||'Vergleiche erwartetes und tatsächliches Ergebnis.')}</div><table><tr><th>Eingabe (Zelle: Wert)</th><th>erwartet</th><th>dein Ergebnis</th><th></th></tr>${rows}</table>`;
   if(all){solved[i]=true;try{localStorage.setItem('vnw-solved',JSON.stringify(solved))}catch(e){}const n=$(`#taskList details[data-i="${i}"] .num`);n.classList.add('ok');n.textContent='✓';}
 }
