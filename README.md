@@ -15,6 +15,7 @@ Ein Lernsimulator für einen einfachen **Von-Neumann-Rechner** – gedacht für 
 - **Aufgaben mit automatischer Prüfung** (Standard- und Bonsai-Befehlssatz).
 - **Befehlssatz & Mikrocode** ansehen, ändern und eigene Befehle erfinden.
 - **Bonsai-Modus** mit nur fünf Befehlen (INC, DEC, JMP, TST, HLT).
+- **Ansicht für PC, Tablet und Handy** – automatisch passend oder oben rechts umschaltbar. Auf dem Handy wechselt man über die untere Leiste zwischen Speicher, Rechner und Erklärung.
 
 ## Kompatibilität
 
